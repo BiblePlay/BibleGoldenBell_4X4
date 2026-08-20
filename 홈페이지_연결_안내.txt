@@ -1,0 +1,7 @@
+BibleGoldenBell_4X4 GitHub Pages 주소 예시
+
+https://사용자이름.github.io/BibleGoldenBell_4X4/
+
+기존 홈페이지에서는 이 주소를 "4×4 바이블 골든벨" 버튼/링크에 연결하면 됩니다.
+프로그램과 문제 데이터는 분리됩니다.
+GitHub에는 프로그램만 올리고, 실제 16문제와 미디어는 .bb4 데이터 파일로 저장·이동합니다.
