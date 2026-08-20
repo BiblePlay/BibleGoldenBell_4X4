@@ -1,25 +1,365 @@
 <!doctype html>
 <html lang="ko">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#07111d" />
-    <title>BibleGoldenBell 4X4</title>
-    <link rel="stylesheet" href="./websrc/styles/global.css" />
-    <link rel="stylesheet" href="./websrc/styles/home-master.css" />
-    <script type="importmap">
-    {
-      "imports": {
-        "react": "https://esm.sh/react@18.3.1",
-        "react/jsx-runtime": "https://esm.sh/react@18.3.1/jsx-runtime",
-        "react-dom/client": "https://esm.sh/react-dom@18.3.1/client?external=react",
-        "lucide-react": "https://esm.sh/lucide-react@0.468.0?external=react"
-      }
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#07111d" />
+  <title>BibleGoldenBell 4X4</title>
+  <style>
+    :root {
+      --bg:#07111d; --bg2:#0a1625; --panel:#0e1c2d; --panel2:#13243a;
+      --line:#2a405b; --line2:#385370; --text:#f5f7fb; --muted:#9fb0c5;
+      --accent:#ff9f1c; --accent2:#ffc15a; --team1:#ff9f1c; --team2:#3e8cff; --team3:#a768ff;
+      --danger:#ff6475; --ok:#43d17a; --shadow:0 18px 60px rgba(0,0,0,.28);
     }
-    </script>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="./websrc/main.js"></script>
-  </body>
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR","Apple SD Gothic Neo",sans-serif}
+    body{min-width:320px}
+    button,input,select,textarea{font:inherit}
+    button{cursor:pointer}
+    .hidden{display:none!important}
+    .app-shell{min-height:100vh;background:
+      radial-gradient(circle at 15% -10%,rgba(255,159,28,.10),transparent 30%),
+      radial-gradient(circle at 95% 10%,rgba(62,140,255,.06),transparent 25%),
+      linear-gradient(180deg,#07111d 0%,#081522 100%)}
+    .topbar{height:74px;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 26px;border-bottom:1px solid rgba(255,255,255,.08);background:rgba(5,14,24,.93);backdrop-filter:blur(12px);position:sticky;top:0;z-index:30}
+    .brand{display:flex;align-items:baseline;gap:9px;white-space:nowrap;font-weight:950;letter-spacing:-.045em}
+    .brand .small{font-size:22px;color:#eaf0f7}.brand .gold{font-size:30px;color:var(--accent)}
+    .actions{display:flex;align-items:center;justify-content:flex-end;gap:9px;flex-wrap:wrap}
+    .btn{min-height:43px;border-radius:12px;border:1px solid var(--line);background:#13243a;color:var(--text);padding:9px 14px;font-weight:800;letter-spacing:-.02em;box-shadow:none}
+    .btn:hover{background:#182c46;border-color:var(--line2)}
+    .btn.primary{background:var(--accent);border-color:transparent;color:#171004}
+    .btn.primary:hover{background:#ffae36}
+    .btn.ghost{background:transparent}.btn.danger{color:#ff9eaa;border-color:rgba(255,100,117,.42)}
+    .btn.slim{min-height:38px;padding:7px 11px;border-radius:10px;font-size:14px}
+    .main{max-width:1500px;margin:0 auto;padding:24px}
+    .home-layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:22px;align-items:start}
+    .board-panel,.side-panel,.admin-panel,.question-panel{background:linear-gradient(180deg,rgba(15,29,47,.98),rgba(9,23,38,.98));border:1px solid rgba(255,255,255,.085);box-shadow:var(--shadow)}
+    .board-panel{border-radius:24px;padding:20px 22px 24px}
+    .board-head{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:17px}
+    .board-head h2{font-size:20px;margin:0;color:#dfe8f4;letter-spacing:-.03em}.board-head h2 b{color:var(--accent)}
+    .mode-note{font-size:13px;color:var(--muted);font-weight:700}
+    .board{width:min(76vw,820px);max-width:100%;margin:0 auto;aspect-ratio:1/1;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);gap:14px}
+    .cell{position:relative;min-width:0;aspect-ratio:1/1;border:1px solid #304964;border-radius:18px;background:linear-gradient(180deg,#172a43,#102239);color:#fff;display:flex;align-items:center;justify-content:center;font-size:clamp(30px,4.2vw,62px);font-weight:950;letter-spacing:-.05em;transition:transform .12s ease,border-color .15s ease,background .2s ease,box-shadow .2s ease;overflow:hidden}
+    .cell:hover{transform:translateY(-2px);border-color:#5b7694;background:linear-gradient(180deg,#1b304c,#132842)}
+    .cell.visited::after{content:"✓";position:absolute;right:10px;top:8px;font-size:15px;color:#b9c8d8;background:rgba(6,16,27,.55);border-radius:999px;padding:3px 7px}
+    .cell.last{outline:3px solid var(--accent2);outline-offset:2px}
+    .cell.team-1{background:linear-gradient(145deg,#a85f09,#ff9f1c);border-color:#ffbd5d;color:#171004;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
+    .cell.team-2{background:linear-gradient(145deg,#1f57a7,#3e8cff);border-color:#81b3ff;color:#fff}
+    .cell.team-3{background:linear-gradient(145deg,#6739ad,#a768ff);border-color:#c7a3ff;color:#fff}
+    .cell.missed{background:linear-gradient(180deg,#273342,#1e2937);color:#8291a3}
+    .cell.win{animation:winPulse .8s ease-in-out infinite alternate;z-index:2}
+    @keyframes winPulse{from{filter:brightness(1);transform:scale(1)}to{filter:brightness(1.25);transform:scale(1.035)}}
+    .side-panel{border-radius:22px;padding:19px;position:sticky;top:96px}
+    .side-title{font-size:13px;text-transform:uppercase;letter-spacing:.12em;color:#8092a7;font-weight:900;margin-bottom:9px}
+    .mode-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:18px}
+    .mode-btn{min-height:42px;border:1px solid var(--line);border-radius:11px;background:#12233a;color:#b8c6d7;font-weight:850}
+    .mode-btn.active{background:var(--accent);color:#191104;border-color:transparent}
+    .team-box{display:grid;gap:9px;margin-top:9px}
+    .team-btn{display:flex;align-items:center;gap:10px;width:100%;min-height:48px;border-radius:13px;border:1px solid var(--line);background:#12233a;color:#fff;padding:9px 12px;font-weight:900;text-align:left}
+    .team-btn .dot{width:18px;height:18px;border-radius:6px;flex:0 0 18px}.team-btn small{margin-left:auto;color:#9fb0c5;font-weight:700}
+    .status-card{margin-top:15px;padding:13px;border-radius:14px;background:#0b1727;border:1px solid rgba(255,255,255,.07);color:#c9d5e4;line-height:1.5;font-size:14px}
+    .status-card b{color:#fff}.status-card .accent{color:var(--accent2)}
+    .side-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+    .help{font-size:12px;color:#7f91a6;line-height:1.45;margin-top:11px}
+    .question-wrap{max-width:1260px;margin:0 auto;padding:24px}
+    .question-panel{border-radius:24px;min-height:calc(100vh - 122px);padding:28px 34px;display:flex;flex-direction:column}
+    .qmeta{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:20px;color:var(--muted);font-weight:850}
+    .qnum{color:var(--accent);font-size:16px;letter-spacing:.08em}
+    .question-text{text-align:center;font-size:clamp(38px,5.1vw,76px);font-weight:950;line-height:1.18;letter-spacing:-.055em;white-space:pre-wrap;margin:18px auto 24px;max-width:1120px}
+    .question-text.medium{font-size:clamp(30px,4vw,58px)}.question-text.long{font-size:clamp(24px,3.1vw,44px)}
+    .hint{max-width:900px;margin:0 auto 16px;padding:10px 14px;border-radius:12px;background:#101f32;border:1px solid rgba(255,255,255,.07);color:#9fb1c6;text-align:center;font-weight:700}
+    .media-stage{display:flex;justify-content:center;align-items:center;min-height:0;margin:6px auto 18px;max-width:1100px;width:100%}
+    .media-stage img,.answer-media img{max-width:100%;max-height:52vh;object-fit:contain;border-radius:15px;border:1px solid rgba(255,255,255,.08);background:#07111d}
+    .media-stage video{max-width:100%;max-height:52vh;border-radius:15px;background:#000}
+    .audio-card{width:min(760px,100%);padding:18px;border-radius:16px;background:#0b1829;border:1px solid var(--line);text-align:center}.audio-card audio{width:100%}
+    .choices{display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:1050px;width:100%;margin:8px auto 24px}
+    .choice{min-height:94px;display:flex;align-items:center;padding:16px 20px;border:1px solid #35516f;border-radius:16px;background:#132640;font-size:clamp(20px,2.2vw,32px);font-weight:900;line-height:1.25}
+    .choice .n{width:42px;color:var(--accent2);font-weight:950;flex:0 0 42px}
+    .ox{display:grid;grid-template-columns:1fr 1fr;gap:22px;width:min(850px,100%);margin:18px auto 28px}.ox div{height:190px;border:2px solid #3b5878;border-radius:24px;display:flex;align-items:center;justify-content:center;font-size:110px;font-weight:950;background:#12253d}.ox .o{color:#64a8ff}.ox .x{color:#ff6d7e}
+    .qactions{display:flex;justify-content:center;gap:12px;margin-top:auto;padding-top:18px;flex-wrap:wrap}
+    .qactions .btn{font-size:17px;min-width:140px}
+    .answer-card{margin:10px auto 0;width:min(1100px,100%);border-radius:18px;background:linear-gradient(180deg,#162943,#102139);border:1px solid #3b5574;padding:22px;text-align:center}
+    .answer-label{color:var(--accent);font-size:14px;font-weight:950;letter-spacing:.12em;margin-bottom:8px}.answer-text{font-size:clamp(28px,4vw,56px);font-weight:950;line-height:1.25;white-space:pre-wrap}.answer-media{margin-top:16px}
+    .admin-wrap{max-width:1420px;margin:0 auto;padding:22px}.admin-layout{display:grid;grid-template-columns:245px minmax(0,1fr);gap:20px}.admin-panel{border-radius:22px;padding:18px}
+    .admin-title{font-size:18px;font-weight:950;margin:0 0 14px}.number-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.num-btn{aspect-ratio:1/1;border:1px solid #304965;border-radius:11px;background:#11243b;color:#d8e2ee;font-weight:900;font-size:17px}.num-btn.active{background:var(--accent);color:#171004;border-color:transparent}
+    .form-panel{padding:22px 24px}.form-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px}.form-head h2{margin:0;font-size:23px}.tag{color:#91a4ba;font-weight:800;font-size:13px;background:#0a1727;padding:7px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.06)}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px}.field{display:grid;gap:7px}.field.full{grid-column:1/-1}.field label{font-size:13px;color:#9fb0c5;font-weight:850}.field input,.field select,.field textarea{width:100%;border:1px solid #314b68;border-radius:11px;background:#081725;color:#f2f6fb;padding:11px 12px;outline:none}.field textarea{min-height:110px;resize:vertical;line-height:1.45}.field input:focus,.field select:focus,.field textarea:focus{border-color:#ffb44d;box-shadow:0 0 0 3px rgba(255,159,28,.10)}
+    .choice-editor{display:grid;grid-template-columns:1fr 1fr;gap:10px}.media-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.media-field{border:1px solid #2c4560;border-radius:13px;background:#0a1828;padding:12px}.media-field b{display:block;font-size:13px;margin-bottom:8px}.media-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.filename{color:#8fa2b8;font-size:12px;overflow-wrap:anywhere}.check-row{display:flex;align-items:center;gap:9px;color:#d5deea;font-weight:750}.check-row input{width:18px;height:18px}
+    .savebar{display:flex;justify-content:flex-end;gap:10px;margin-top:18px;flex-wrap:wrap}
+    .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);opacity:0;pointer-events:none;z-index:100;padding:11px 16px;border-radius:12px;background:#f2f5f8;color:#0d1723;font-weight:900;box-shadow:0 10px 30px rgba(0,0,0,.35);transition:.2s ease}.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+    .bingo-overlay{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;background:rgba(4,10,18,.62);backdrop-filter:blur(4px)}.bingo-card{text-align:center;padding:38px 62px;border-radius:28px;background:linear-gradient(160deg,#13243a,#0a1726);border:1px solid rgba(255,255,255,.14);box-shadow:0 30px 100px rgba(0,0,0,.6)}.bingo-card .big{font-size:clamp(62px,10vw,138px);font-weight:1000;letter-spacing:-.07em;color:var(--accent);line-height:.95}.bingo-card .who{font-size:30px;font-weight:950;margin:16px 0 24px}
+    #confetti{position:fixed;inset:0;pointer-events:none;z-index:79}
+    .empty-note{text-align:center;color:#8193a8;font-size:14px;margin-top:10px}
+    @media(max-width:980px){.home-layout{grid-template-columns:1fr}.side-panel{position:static}.board{width:min(92vw,760px)}.admin-layout{grid-template-columns:1fr}.number-grid{grid-template-columns:repeat(8,1fr)}.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}.media-grid{grid-template-columns:1fr 1fr}}
+    @media(max-width:640px){.topbar{height:auto;min-height:68px;padding:12px 14px;align-items:flex-start}.brand .small{font-size:17px}.brand .gold{font-size:22px}.actions{gap:6px}.btn{padding:8px 10px;min-height:39px;font-size:13px}.main,.question-wrap,.admin-wrap{padding:12px}.board-panel{padding:14px}.board{gap:8px}.cell{border-radius:11px;font-size:clamp(25px,10vw,42px)}.home-layout{gap:12px}.question-panel{padding:18px 14px;min-height:0}.choices{grid-template-columns:1fr}.ox div{height:130px;font-size:80px}.admin-layout{gap:12px}.number-grid{grid-template-columns:repeat(4,1fr)}.form-panel{padding:16px}.media-grid,.choice-editor{grid-template-columns:1fr}.bingo-card{padding:30px 24px;width:calc(100% - 30px)}}
+    @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}}
+  </style>
+</head>
+<body>
+  <div id="app" class="app-shell"></div>
+  <canvas id="confetti" class="hidden"></canvas>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <input id="importFile" class="hidden" type="file" accept=".bb4,application/octet-stream,application/json" />
+
+  <script>
+  (()=>{
+    'use strict';
+    const APP='BibleGoldenBell_4X4';
+    const PACK_MAGIC='BB4PACK3\n';
+    const LS_KEY='bb4_state_v3';
+    const PROGRESS_KEY='bb4_progress_v3';
+    const DB_NAME='BibleGoldenBell4X4_DB';
+    const DB_STORE='media';
+    const mediaUrlCache=new Map();
+    let adminIndex=0;
+    let answerVisible=false;
+    let currentView='home';
+    let currentQuestion=null;
+    let bingoLock=false;
+
+    const emptyQuestion=(n)=>({
+      number:n,type:'text',question:'',answer:'',hint:'',choices:['','','',''],correctChoice:0,oxAnswer:'O',audioAuto:false,
+      media:{questionImage:null,answerImage:null,video:null,audio:null}
+    });
+    const defaultState=()=>({
+      version:3,questions:Array.from({length:16},(_,i)=>emptyQuestion(i+1)),
+      settings:{mode:'individual',teams:[{name:'1팀',color:'#ff9f1c'},{name:'2팀',color:'#3e8cff'},{name:'3팀',color:'#a768ff'}]}
+    });
+    const defaultProgress=()=>({owners:Array(16).fill(0),visited:Array(16).fill(false),lastQuestion:null,winning:[]});
+
+    let state=loadState();
+    let progress=loadProgress();
+
+    function loadState(){
+      try{
+        const raw=localStorage.getItem(LS_KEY); if(!raw) return defaultState();
+        const parsed=JSON.parse(raw); return normalizeState(parsed);
+      }catch(e){console.warn(e);return defaultState()}
+    }
+    function normalizeState(s){
+      const d=defaultState();
+      if(!s||typeof s!=='object') return d;
+      const qs=Array.isArray(s.questions)?s.questions:[];
+      d.questions=d.questions.map((base,i)=>{
+        const q=qs[i]||{};
+        return {...base,...q,number:i+1,choices:Array.isArray(q.choices)?[...q.choices.slice(0,4),...Array(4).fill('')].slice(0,4):base.choices,media:{...base.media,...(q.media||{})}};
+      });
+      d.settings={...d.settings,...(s.settings||{})};
+      if(!['individual','2','3'].includes(d.settings.mode)) d.settings.mode='individual';
+      if(!Array.isArray(d.settings.teams)||d.settings.teams.length<3) d.settings.teams=defaultState().settings.teams;
+      return d;
+    }
+    function saveState(){localStorage.setItem(LS_KEY,JSON.stringify(state))}
+    function loadProgress(){
+      try{const r=JSON.parse(localStorage.getItem(PROGRESS_KEY)||'null');if(!r)return defaultProgress();return {...defaultProgress(),...r,owners:Array.isArray(r.owners)?r.owners.slice(0,16):Array(16).fill(0),visited:Array.isArray(r.visited)?r.visited.slice(0,16):Array(16).fill(false)}}catch{return defaultProgress()}
+    }
+    function saveProgress(){localStorage.setItem(PROGRESS_KEY,JSON.stringify(progress))}
+
+    function openDb(){return new Promise((res,rej)=>{const req=indexedDB.open(DB_NAME,1);req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains(DB_STORE))db.createObjectStore(DB_STORE)};req.onsuccess=()=>res(req.result);req.onerror=()=>rej(req.error)})}
+    async function dbPut(key,blob){const db=await openDb();return new Promise((res,rej)=>{const tx=db.transaction(DB_STORE,'readwrite');tx.objectStore(DB_STORE).put(blob,key);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error)})}
+    async function dbGet(key){const db=await openDb();return new Promise((res,rej)=>{const tx=db.transaction(DB_STORE,'readonly');const rq=tx.objectStore(DB_STORE).get(key);rq.onsuccess=()=>res(rq.result||null);rq.onerror=()=>rej(rq.error)})}
+    async function dbDelete(key){const db=await openDb();return new Promise((res,rej)=>{const tx=db.transaction(DB_STORE,'readwrite');tx.objectStore(DB_STORE).delete(key);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error)})}
+    async function dbClear(){const db=await openDb();return new Promise((res,rej)=>{const tx=db.transaction(DB_STORE,'readwrite');tx.objectStore(DB_STORE).clear();tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error)})}
+    async function dbKeys(){const db=await openDb();return new Promise((res,rej)=>{const tx=db.transaction(DB_STORE,'readonly');const rq=tx.objectStore(DB_STORE).getAllKeys();rq.onsuccess=()=>res(rq.result||[]);rq.onerror=()=>rej(rq.error)})}
+    function revokeMedia(key){if(mediaUrlCache.has(key)){URL.revokeObjectURL(mediaUrlCache.get(key));mediaUrlCache.delete(key)}}
+    async function mediaUrl(key){if(!key)return null;if(mediaUrlCache.has(key))return mediaUrlCache.get(key);const b=await dbGet(key);if(!b)return null;const u=URL.createObjectURL(b);mediaUrlCache.set(key,u);return u}
+
+    function esc(s){return String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
+    function qKey(n,kind){return `q${n}_${kind}`}
+    function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),1800)}
+    function header(extra=''){
+      return `<header class="topbar"><div class="brand"><span class="small">BibleGoldenBell</span><strong class="gold">4X4</strong></div><div class="actions">${extra}</div></header>`;
+    }
+
+    function render(){
+      if(currentView==='home') renderHome();
+      else if(currentView==='admin') renderAdmin();
+      else renderQuestion(currentQuestion);
+    }
+
+    function renderHome(){
+      currentView='home';answerVisible=false;
+      const mode=state.settings.mode;
+      const teamCount=mode==='2'?2:mode==='3'?3:0;
+      const cells=state.questions.map((q,i)=>{
+        const o=progress.owners[i]||0;const cls=o>0?`team-${o}`:(o===-1?'missed':'');
+        return `<button type="button" class="cell ${cls} ${progress.visited[i]?'visited':''} ${progress.lastQuestion===i?'last':''} ${progress.winning.includes(i)?'win':''}" data-cell="${i}" aria-label="${i+1}번 문제">${i+1}</button>`;
+      }).join('');
+      const teamBtns=teamCount?Array.from({length:teamCount},(_,i)=>{
+        const t=state.settings.teams[i];return `<button type="button" class="team-btn" data-team="${i+1}"><span class="dot" style="background:${esc(t.color)}"></span>${esc(t.name)}<small>맞힘</small></button>`
+      }).join(''):`<div class="status-card">개인전에서는 팀 색 배정 없이<br><b>1~16 문제판</b>으로 사용합니다.</div>`;
+      const last=progress.lastQuestion==null?'아직 푼 문제가 없습니다.':`방금 푼 문제 <span class="accent"><b>${progress.lastQuestion+1}번</b></span>`;
+      document.getElementById('app').innerHTML=`${header(`
+        <button class="btn ghost" id="dataLoad">데이터 불러오기</button>
+        <button class="btn ghost" id="dataSave">데이터 저장</button>
+        <button class="btn" id="adminBtn">⚙ 설정</button>`)}
+        <main class="main"><div class="home-layout">
+          <section class="board-panel"><div class="board-head"><h2><b>4×4</b> 문제판</h2><div class="mode-note">문제 번호를 눌러 시작하세요</div></div><div class="board">${cells}</div></section>
+          <aside class="side-panel"><div class="side-title">GAME MODE</div><div class="mode-grid">
+            <button class="mode-btn ${mode==='individual'?'active':''}" data-mode="individual">개인</button>
+            <button class="mode-btn ${mode==='2'?'active':''}" data-mode="2">2팀</button>
+            <button class="mode-btn ${mode==='3'?'active':''}" data-mode="3">3팀</button>
+          </div>
+          <div class="side-title">RESULT</div><div class="status-card">${last}</div>
+          <div class="team-box">${teamBtns}</div>
+          ${teamCount?`<div class="side-actions"><button class="btn slim" id="missBtn">미획득</button><button class="btn slim" id="undoOwner">배정 취소</button></div>`:''}
+          <div class="side-actions"><button class="btn slim" id="resetBoard">판 초기화</button><button class="btn slim" id="clearLast">선택 해제</button></div>
+          <div class="help">문제를 푼 뒤 문제판으로 돌아오면 방금 푼 번호가 표시됩니다. 맞힌 팀 색을 누르면 그 칸이 팀 색으로 바뀌며 빙고는 자동 판정됩니다.</div>
+          </aside>
+        </div></main>`;
+      document.querySelectorAll('[data-cell]').forEach(b=>b.addEventListener('click',()=>openQuestion(Number(b.dataset.cell))));
+      document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{state.settings.mode=b.dataset.mode;saveState();renderHome()}));
+      document.querySelectorAll('[data-team]').forEach(b=>b.addEventListener('click',()=>assignOwner(Number(b.dataset.team))));
+      document.getElementById('adminBtn').addEventListener('click',()=>{currentView='admin';render()});
+      document.getElementById('dataSave').addEventListener('click',exportPack);
+      document.getElementById('dataLoad').addEventListener('click',chooseImport);
+      document.getElementById('resetBoard').addEventListener('click',()=>{if(confirm('팀 색과 진행 표시를 모두 초기화할까요?')){progress=defaultProgress();saveProgress();renderHome()}});
+      document.getElementById('clearLast').addEventListener('click',()=>{progress.lastQuestion=null;saveProgress();renderHome()});
+      if(teamCount){document.getElementById('missBtn').addEventListener('click',()=>assignOwner(-1));document.getElementById('undoOwner').addEventListener('click',()=>assignOwner(0))}
+    }
+
+    function openQuestion(i){
+      currentQuestion=i;progress.lastQuestion=i;progress.visited[i]=true;progress.winning=[];saveProgress();currentView='question';render();
+    }
+
+    async function renderQuestion(i){
+      const q=state.questions[i];if(!q){currentView='home';return renderHome()}
+      let body='';
+      const qt=(q.question||'').trim();
+      const sizeClass=qt.length>85?'long':qt.length>45?'medium':'';
+      if(q.hint) body+=`<div class="hint">힌트 · ${esc(q.hint)}</div>`;
+      body+=`<div class="question-text ${sizeClass}">${esc(qt||`${i+1}번 문제를 설정에서 입력하세요.`)}</div>`;
+      const qImg=await mediaUrl(q.media.questionImage);const video=await mediaUrl(q.media.video);const audio=await mediaUrl(q.media.audio);
+      if(qImg) body+=`<div class="media-stage"><img src="${qImg}" alt="문제 이미지"></div>`;
+      if(q.type==='video'&&video) body+=`<div class="media-stage"><video src="${video}" controls playsinline></video></div>`;
+      if((q.type==='audio'||audio)&&audio) body+=`<div class="media-stage"><div class="audio-card"><audio id="qAudio" src="${audio}" controls></audio></div></div>`;
+      if(q.type==='multiple') body+=`<div class="choices">${q.choices.map((c,n)=>`<div class="choice"><span class="n">${n+1}</span><span>${esc(c||'보기')}</span></div>`).join('')}</div>`;
+      if(q.type==='ox') body+=`<div class="ox"><div class="o">O</div><div class="x">X</div></div>`;
+      document.getElementById('app').innerHTML=`${header(`<button class="btn ghost" id="homeTop">⌂ 홈</button>`)}<main class="question-wrap"><section class="question-panel">
+        <div class="qmeta"><span class="qnum">QUESTION ${String(i+1).padStart(2,'0')}</span><span>${typeLabel(q.type)}</span></div>
+        ${body}<div id="answerArea"></div>
+        <div class="qactions"><button class="btn" id="homeBtn">문제판</button><button class="btn primary" id="answerBtn">정답 보기</button></div>
+      </section></main>`;
+      const goHome=()=>{currentView='home';render()};
+      document.getElementById('homeTop').addEventListener('click',goHome);document.getElementById('homeBtn').addEventListener('click',goHome);
+      document.getElementById('answerBtn').addEventListener('click',()=>showAnswer(i));
+      if(q.audioAuto&&audio){setTimeout(()=>{const a=document.getElementById('qAudio');if(a)a.play().catch(()=>{})},80)}
+    }
+
+    async function showAnswer(i){
+      if(answerVisible)return;answerVisible=true;const q=state.questions[i];const aImg=await mediaUrl(q.media.answerImage);
+      let answer=q.answer||'';
+      if(q.type==='ox') answer=q.oxAnswer;
+      if(q.type==='multiple'&&!answer){answer=q.choices[q.correctChoice]||''}
+      document.getElementById('answerArea').innerHTML=`<div class="answer-card"><div class="answer-label">ANSWER</div><div class="answer-text">${esc(answer||'정답을 설정에서 입력하세요.')}</div>${aImg?`<div class="answer-media"><img src="${aImg}" alt="정답 이미지"></div>`:''}</div>`;
+      const b=document.getElementById('answerBtn');b.textContent='정답 공개됨';b.disabled=true;
+    }
+
+    function typeLabel(t){return ({text:'일반·초성·빈칸',multiple:'4지선다',ox:'OX',image:'이미지',video:'영상',hidden:'숨은그림',audio:'음성'})[t]||'일반'}
+
+    function assignOwner(team){
+      const i=progress.lastQuestion;if(i==null){toast('먼저 문제를 하나 풀어주세요.');return}
+      progress.owners[i]=team;progress.visited[i]=true;progress.winning=[];saveProgress();
+      if(team>0){const win=findWinningLine(team);if(win){progress.winning=win;saveProgress();renderHome();setTimeout(()=>celebrate(team,win),80);return}}
+      renderHome();
+    }
+    function findWinningLine(team){
+      const lines=[];for(let r=0;r<4;r++)lines.push([r*4,r*4+1,r*4+2,r*4+3]);for(let c=0;c<4;c++)lines.push([c,c+4,c+8,c+12]);lines.push([0,5,10,15],[3,6,9,12]);
+      return lines.find(line=>line.every(i=>progress.owners[i]===team))||null;
+    }
+
+    function celebrate(team,win){
+      if(bingoLock)return;bingoLock=true;const t=state.settings.teams[team-1];
+      const ov=document.createElement('div');ov.className='bingo-overlay';ov.innerHTML=`<div class="bingo-card"><div class="big">BINGO!</div><div class="who">${esc(t.name)} 빙고!</div><button class="btn primary" id="closeBingo">계속하기</button></div>`;document.body.appendChild(ov);
+      startConfetti(t.color);document.getElementById('closeBingo').addEventListener('click',()=>{ov.remove();stopConfetti();bingoLock=false});
+    }
+    let confettiTimer=null,confettiParts=[];
+    function startConfetti(teamColor){
+      if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+      const c=document.getElementById('confetti');c.classList.remove('hidden');const ctx=c.getContext('2d');
+      const resize=()=>{c.width=innerWidth*devicePixelRatio;c.height=innerHeight*devicePixelRatio;c.style.width=innerWidth+'px';c.style.height=innerHeight+'px';ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0)};resize();
+      const colors=[teamColor,'#ffcf70','#ffffff','#4bd6a0','#6ca8ff'];confettiParts=Array.from({length:150},()=>({x:Math.random()*innerWidth,y:-20-Math.random()*innerHeight*.35,vx:(Math.random()-.5)*5,vy:2+Math.random()*5,r:3+Math.random()*5,a:Math.random()*Math.PI,color:colors[Math.floor(Math.random()*colors.length)]}));
+      let frames=0;const tick=()=>{ctx.clearRect(0,0,innerWidth,innerHeight);for(const p of confettiParts){p.x+=p.vx;p.y+=p.vy;p.a+=.08;ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.a);ctx.fillStyle=p.color;ctx.fillRect(-p.r,-p.r/2,p.r*2,p.r);ctx.restore()}frames++;if(frames<240)confettiTimer=requestAnimationFrame(tick);else stopConfetti()};tick();
+    }
+    function stopConfetti(){if(confettiTimer)cancelAnimationFrame(confettiTimer);confettiTimer=null;const c=document.getElementById('confetti');const ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);c.classList.add('hidden')}
+
+    function renderAdmin(){
+      currentView='admin';const q=state.questions[adminIndex];
+      const nums=state.questions.map((_,i)=>`<button class="num-btn ${i===adminIndex?'active':''}" data-admin-num="${i}">${i+1}</button>`).join('');
+      const choiceFields=q.choices.map((c,i)=>`<div class="field"><label>${i+1}번 보기</label><input data-choice="${i}" value="${esc(c)}"></div>`).join('');
+      document.getElementById('app').innerHTML=`${header(`<button class="btn ghost" id="adminLoad">데이터 불러오기</button><button class="btn ghost" id="adminSavePack">데이터 저장</button><button class="btn primary" id="adminHome">⌂ 홈</button>`)}
+      <main class="admin-wrap"><div class="admin-layout">
+        <aside class="admin-panel"><h2 class="admin-title">16문제 관리</h2><div class="number-grid">${nums}</div><div class="empty-note">각 번호마다 문제 형식을 자유롭게 선택합니다.</div></aside>
+        <section class="admin-panel form-panel"><div class="form-head"><h2>${adminIndex+1}번 문제</h2><span class="tag">16문제 전용</span></div>
+          <div class="form-grid">
+            <div class="field"><label>문제 종류</label><select id="qType">${['text','multiple','ox','image','video','hidden','audio'].map(t=>`<option value="${t}" ${q.type===t?'selected':''}>${typeLabel(t)}</option>`).join('')}</select></div>
+            <div class="field"><label>힌트</label><input id="qHint" value="${esc(q.hint)}" placeholder="필요할 때만 입력"></div>
+            <div class="field full"><label>문제</label><textarea id="qText" placeholder="초성, □□□ 빈칸도 그대로 입력할 수 있습니다.">${esc(q.question)}</textarea></div>
+            <div id="dynamicFields" class="field full"></div>
+            <div class="field full"><label>정답</label><textarea id="qAnswer" placeholder="정답을 입력하세요.">${esc(q.answer)}</textarea></div>
+            <div class="field full"><label>미디어</label><div class="media-grid">
+              ${mediaEditor(q,'questionImage','문제 이미지','image/*')}
+              ${mediaEditor(q,'answerImage','정답 이미지','image/*')}
+              ${mediaEditor(q,'video','동영상','video/*')}
+              ${mediaEditor(q,'audio','오디오','audio/*')}
+            </div></div>
+            <div class="field full"><label class="check-row"><input type="checkbox" id="audioAuto" ${q.audioAuto?'checked':''}> 문제를 열 때 오디오 자동재생 시도</label></div>
+          </div>
+          <div class="savebar"><button class="btn" id="clearQuestion">이 문제 비우기</button><button class="btn primary" id="saveQuestion">문제 저장</button></div>
+        </section>
+      </div></main>`;
+      document.querySelectorAll('[data-admin-num]').forEach(b=>b.addEventListener('click',()=>{adminIndex=Number(b.dataset.adminNum);renderAdmin()}));
+      document.getElementById('adminHome').addEventListener('click',()=>{currentView='home';render()});document.getElementById('adminLoad').addEventListener('click',chooseImport);document.getElementById('adminSavePack').addEventListener('click',exportPack);
+      document.getElementById('qType').addEventListener('change',renderDynamicAdminFields);renderDynamicAdminFields();
+      document.querySelectorAll('[data-media-input]').forEach(inp=>inp.addEventListener('change',handleMediaInput));
+      document.querySelectorAll('[data-media-remove]').forEach(b=>b.addEventListener('click',handleMediaRemove));
+      document.getElementById('saveQuestion').addEventListener('click',saveAdminQuestion);
+      document.getElementById('clearQuestion').addEventListener('click',clearAdminQuestion);
+    }
+    function mediaEditor(q,kind,label,accept){const key=q.media[kind];return `<div class="media-field"><b>${label}</b><div class="media-row"><label class="btn slim">파일 선택<input class="hidden" type="file" accept="${accept}" data-media-input="${kind}"></label>${key?`<button class="btn slim danger" type="button" data-media-remove="${kind}">삭제</button>`:''}</div><div class="filename">${key?esc(key):'선택된 파일 없음'}</div></div>`}
+    function renderDynamicAdminFields(){
+      const t=document.getElementById('qType')?.value;const q=state.questions[adminIndex];const host=document.getElementById('dynamicFields');if(!host)return;
+      if(t==='multiple') host.innerHTML=`<label style="font-size:13px;color:#9fb0c5;font-weight:850">4지선다 보기</label><div class="choice-editor">${q.choices.map((c,i)=>`<div class="field"><label>${i+1}번</label><input data-choice="${i}" value="${esc(c)}"></div>`).join('')}</div><div class="field" style="margin-top:10px"><label>정답 번호</label><select id="correctChoice">${[0,1,2,3].map(i=>`<option value="${i}" ${q.correctChoice===i?'selected':''}>${i+1}번</option>`).join('')}</select></div>`;
+      else if(t==='ox') host.innerHTML=`<div class="field"><label>OX 정답</label><select id="oxAnswer"><option ${q.oxAnswer==='O'?'selected':''}>O</option><option ${q.oxAnswer==='X'?'selected':''}>X</option></select></div>`;
+      else host.innerHTML='';
+    }
+    async function handleMediaInput(e){const kind=e.currentTarget.dataset.mediaInput;const file=e.currentTarget.files?.[0];if(!file)return;const q=state.questions[adminIndex];const key=qKey(q.number,kind);await dbPut(key,file);revokeMedia(key);q.media[kind]=key;q.media[`${kind}Name`]=file.name;saveState();toast(`${file.name} 저장됨`);renderAdmin()}
+    async function handleMediaRemove(e){const kind=e.currentTarget.dataset.mediaRemove;const q=state.questions[adminIndex];const key=q.media[kind];if(key){await dbDelete(key);revokeMedia(key)}q.media[kind]=null;delete q.media[`${kind}Name`];saveState();renderAdmin()}
+    function saveAdminQuestion(){
+      const q=state.questions[adminIndex];q.type=document.getElementById('qType').value;q.question=document.getElementById('qText').value;q.answer=document.getElementById('qAnswer').value;q.hint=document.getElementById('qHint').value;q.audioAuto=document.getElementById('audioAuto').checked;
+      if(q.type==='multiple'){q.choices=[0,1,2,3].map(i=>document.querySelector(`[data-choice="${i}"]`)?.value||'');q.correctChoice=Number(document.getElementById('correctChoice')?.value||0);if(!q.answer)q.answer=q.choices[q.correctChoice]||''}
+      if(q.type==='ox'){q.oxAnswer=document.getElementById('oxAnswer')?.value||'O';q.answer=q.oxAnswer}
+      saveState();toast(`${adminIndex+1}번 문제 저장됨`);renderAdmin();
+    }
+    async function clearAdminQuestion(){if(!confirm(`${adminIndex+1}번 문제의 글과 연결된 미디어를 모두 비울까요?`))return;const q=state.questions[adminIndex];for(const kind of ['questionImage','answerImage','video','audio']){const key=q.media[kind];if(key){await dbDelete(key);revokeMedia(key)}}state.questions[adminIndex]=emptyQuestion(adminIndex+1);saveState();renderAdmin()}
+
+    async function exportPack(){
+      try{
+        toast('데이터팩을 만드는 중입니다…');
+        const keys=await dbKeys();const blobs=[];let offset=0;const media=[];
+        for(const key of keys){const blob=await dbGet(key);if(!blob)continue;media.push({key:String(key),name:findMediaName(String(key)),type:blob.type||'application/octet-stream',size:blob.size,offset});blobs.push(blob);offset+=blob.size}
+        const manifest={app:APP,format:3,createdAt:new Date().toISOString(),state,media};
+        const enc=new TextEncoder();const magic=enc.encode(PACK_MAGIC);const header=enc.encode(JSON.stringify(manifest));const len=new Uint8Array(4);new DataView(len.buffer).setUint32(0,header.byteLength,true);
+        const pack=new Blob([magic,len,header,...blobs],{type:'application/octet-stream'});const a=document.createElement('a');a.href=URL.createObjectURL(pack);a.download=`BibleGoldenBell_4X4_${dateStamp()}.bb4`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),2000);toast('데이터팩 저장 완료');
+      }catch(e){console.error(e);alert('데이터 저장 중 오류가 발생했습니다: '+e.message)}
+    }
+    function findMediaName(key){const m=/^q(\d+)_(.+)$/.exec(key);if(!m)return key;const q=state.questions[Number(m[1])-1];return q?.media?.[m[2]+'Name']||key}
+    function dateStamp(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
+    function chooseImport(){const inp=document.getElementById('importFile');inp.value='';inp.click()}
+    document.getElementById('importFile').addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;try{await importPack(f);toast('데이터 불러오기 완료');currentView='home';render()}catch(err){console.error(err);alert('이 데이터 파일을 불러올 수 없습니다.\n'+err.message)}});
+    async function importPack(file){
+      const buf=await file.arrayBuffer();const u8=new Uint8Array(buf);const enc=new TextEncoder();const magic=enc.encode(PACK_MAGIC);let match=u8.length>magic.length+4;for(let i=0;i<magic.length&&match;i++)if(u8[i]!==magic[i])match=false;
+      if(match){const dv=new DataView(buf);const headerLen=dv.getUint32(magic.length,true);const hs=magic.length+4,he=hs+headerLen;if(he>buf.byteLength)throw new Error('데이터팩 헤더가 손상되었습니다.');const manifest=JSON.parse(new TextDecoder().decode(u8.slice(hs,he)));if(manifest.app!==APP)throw new Error('BibleGoldenBell 4X4 데이터가 아닙니다.');
+        await dbClear();mediaUrlCache.forEach(u=>URL.revokeObjectURL(u));mediaUrlCache.clear();for(const m of manifest.media||[]){const start=he+Number(m.offset||0),end=start+Number(m.size||0);if(start<he||end>buf.byteLength)throw new Error('미디어 데이터가 손상되었습니다.');await dbPut(m.key,new Blob([buf.slice(start,end)],{type:m.type||'application/octet-stream'}))}state=normalizeState(manifest.state);saveState();progress=defaultProgress();saveProgress();return;
+      }
+      // 이전 JSON 형식 호환: 문제/설정 데이터만 우선 복원
+      const txt=new TextDecoder().decode(u8);const old=JSON.parse(txt);const src=old.state||old;if(!src.questions)throw new Error('지원하지 않는 데이터 형식입니다.');state=normalizeState(src);saveState();progress=defaultProgress();saveProgress();
+    }
+
+    // 초기 화면
+    render();
+  })();
+  </script>
+</body>
 </html>
