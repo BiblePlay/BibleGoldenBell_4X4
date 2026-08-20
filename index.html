@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#06111f">
 <title>BibleGoldenBell_4X4</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<meta name="application-name" content="BibleGoldenBell">
+<meta name="apple-mobile-web-app-title" content="BibleGoldenBell">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
 <style>
 :root{
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR","Apple SD Gothic Neo",sans-serif;
@@ -199,6 +207,28 @@ button,input,textarea,select{font:inherit}button{cursor:pointer}button:focus-vis
 .reset-modal-actions .cancel{color:#fff;border:1px solid #294867;background:#0a1928}
 .reset-modal-actions .confirm{color:#07111d;border:0;background:var(--accent)}
 
+
+/* FINAL two additions: nearby board icon + BibleGoldenBell shortcut/install */
+.master-title-actions{display:flex;align-items:center;gap:9px}
+.master-install-button{
+  width:43px;height:43px;padding:0;display:grid;place-items:center;
+  color:var(--text);border:1px solid #24476c;border-radius:10px;background:transparent;
+}
+.master-install-button:hover{color:var(--accent);border-color:var(--accent)}
+.master-install-button svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+.question-footer .board-quick-button{
+  min-width:50px;width:50px;height:50px;padding:0;
+  color:var(--text);border:1px solid #24476c;border-radius:10px;background:#081827;
+}
+.question-footer .board-quick-button:hover{
+  color:var(--accent);border-color:var(--accent);background:#081827;
+}
+.question-footer .board-quick-button svg{
+  width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;
+  stroke-linecap:round;stroke-linejoin:round;
+}
+
 </style>
 </head>
 <body>
@@ -250,6 +280,53 @@ function toast(msg){const el=document.getElementById('toast');el.textContent=msg
 function qKey(n,kind){return `q${n}_${kind}`}
 function dateStamp(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
 function crownSvg(){return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17h16l-1.3-9-4.2 4-2.5-6-2.5 6-4.2-4L4 17Z"/><path d="M5 20h14"/></svg>'}
+function boardGridSvg(){return '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>'}
+function installHomeSvg(){return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10.5V21h13V10.5"/><path d="M12 9v7"/><path d="m9.5 13.5 2.5 2.5 2.5-2.5"/></svg>'}
+
+let deferredInstallPrompt=null;
+function isStandaloneApp(){
+  return window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone===true;
+}
+window.addEventListener('beforeinstallprompt',e=>{
+  e.preventDefault();
+  deferredInstallPrompt=e;
+});
+window.addEventListener('appinstalled',()=>{
+  deferredInstallPrompt=null;
+  toast('BibleGoldenBell 바로가기가 설치되었습니다.');
+  document.getElementById('installAppBtn')?.classList.add('hidden');
+});
+function downloadDesktopShortcut(){
+  const url=location.href.split('#')[0].split('?')[0];
+  const isApple=/Mac|iPhone|iPad|iPod/i.test(navigator.platform||navigator.userAgent);
+  let blob,name;
+  if(isApple){
+    const safe=url.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const body=`<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict><key>URL</key><string>${safe}</string></dict></plist>`;
+    blob=new Blob([body],{type:'application/xml'});
+    name='BibleGoldenBell.webloc';
+  }else{
+    blob=new Blob([`[InternetShortcut]\r\nURL=${url}\r\n`],{type:'text/plain'});
+    name='BibleGoldenBell.url';
+  }
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();
+  const u=a.href;a.remove();setTimeout(()=>URL.revokeObjectURL(u),1500);
+  toast('BibleGoldenBell 바로가기 파일을 저장했습니다.');
+}
+async function installBibleGoldenBell(){
+  if(isStandaloneApp()){toast('BibleGoldenBell이 이미 설치되어 있습니다.');return}
+  if(deferredInstallPrompt){
+    deferredInstallPrompt.prompt();
+    try{await deferredInstallPrompt.userChoice}catch{}
+    deferredInstallPrompt=null;
+    return;
+  }
+  downloadDesktopShortcut();
+}
+
 function commonTopbar(){return `<header class="topbar"><button class="brand" id="brandHome"><span class="brand-mark">${crownSvg()}</span><span>도전 바이블 <strong>골든벨</strong></span></button><div class="topbar-actions"><button class="icon-button" id="gearBtn" title="관리자">⚙</button><button class="icon-button" id="topReset" title="전체 초기화">↻</button><button class="icon-button" id="topFullscreen" title="전체화면">⛶</button></div></header>`}
 async function enterFullscreen(){try{await document.documentElement.requestFullscreen({navigationUI:'hide'})}catch{await document.documentElement.requestFullscreen()}}
 async function toggleFullscreen(){try{if(!document.fullscreenElement){await enterFullscreen()}else await document.exitFullscreen()}catch{toast('전체화면을 시작할 수 없습니다.')}}
@@ -272,10 +349,10 @@ function renderHome(){
   const cells=state.questions.map((q,i)=>{const owner=Number(progress.owners[i]||0);const cls=[progress.visited[i]&&!owner?'is-played':'',owner>0?'is-claimed team-'+owner:'',progress.winning.includes(i)?'is-bingo-cell':'',last===i?'is-pending':''].filter(Boolean).join(' ');return `<button class="master-score-cell ${cls}" data-cell="${i}">${i+1}</button>`}).join('');
   let teams='';for(let id=1;id<=teamCount;id++){teams+=`<button class="team-${id===1?'one':id===2?'two':'three'}" data-team="${id}" ${last==null?'disabled':''}><span class="team-color-dot"></span><strong>${id}팀</strong></button>`}
   const lower=teamCount?`<div class="bingo-pending-card"><span>방금 푼 문제</span><strong>${last==null?'—':last+1+'번'}</strong><p>${last==null?'문제를 푼 뒤 팀 색을 선택합니다.':'맞힌 팀의 색을 누르세요.'}</p></div><div class="bingo-team-buttons">${teams}</div><div class="bingo-secondary-actions"><button id="missBtn" ${last==null?'disabled':''}>미획득</button><button id="undoClaim" ${!progress.lastClaim?'disabled':''}>↶ 배정 취소</button></div>`:`<div class="bingo-solo-card"><strong>개인 문제판</strong><p>문제를 선택하고 정답을 확인하면 사용한 번호가 표시됩니다.</p></div>`;
-  document.getElementById('app').innerHTML=`<main class="master-screen"><section class="master-board-panel"><header class="master-board-titlebar"><div class="master-board-title"><span>도전 바이블</span><strong>골든벨</strong></div><button class="master-admin-button" id="homeAdmin">⚙ 관리자 모드</button></header><div class="master-board-grid-4x4">${cells}</div><footer class="master-board-footer"><div class="master-footer-actions"><button id="resetProgress">↻ 전체 초기화</button><button id="homeFullscreen">↗ 전체화면</button></div></footer></section><aside class="master-sidebar"><section class="master-logo-panel"><img src="${LOGO_DATA}" alt="도전 바이블 골든벨"></section><section class="bingo-control-panel"><div class="bingo-control-heading"><span class="live-dot"></span>GAME MODE</div><div class="bingo-mode-buttons"><button data-mode="individual" class="${mode==='individual'?'is-active':''}">개인</button><button data-mode="2" class="${mode==='2'?'is-active':''}">2팀</button><button data-mode="3" class="${mode==='3'?'is-active':''}">3팀</button></div>${lower}</section></aside></main>`;
+  document.getElementById('app').innerHTML=`<main class="master-screen"><section class="master-board-panel"><header class="master-board-titlebar"><div class="master-board-title"><span>도전 바이블</span><strong>골든벨</strong></div><div class="master-title-actions"><button class="master-install-button" id="installAppBtn" title="BibleGoldenBell 바로가기 설치" aria-label="BibleGoldenBell 바로가기 설치">${installHomeSvg()}</button><button class="master-admin-button" id="homeAdmin">⚙ 관리자 모드</button></div></header><div class="master-board-grid-4x4">${cells}</div><footer class="master-board-footer"><div class="master-footer-actions"><button id="resetProgress">↻ 전체 초기화</button><button id="homeFullscreen">↗ 전체화면</button></div></footer></section><aside class="master-sidebar"><section class="master-logo-panel"><img src="${LOGO_DATA}" alt="도전 바이블 골든벨"></section><section class="bingo-control-panel"><div class="bingo-control-heading"><span class="live-dot"></span>GAME MODE</div><div class="bingo-mode-buttons"><button data-mode="individual" class="${mode==='individual'?'is-active':''}">개인</button><button data-mode="2" class="${mode==='2'?'is-active':''}">2팀</button><button data-mode="3" class="${mode==='3'?'is-active':''}">3팀</button></div>${lower}</section></aside></main>`;
   document.querySelectorAll('[data-cell]').forEach(b=>b.addEventListener('click',()=>openQuestion(Number(b.dataset.cell))));
   document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{state.settings.mode=b.dataset.mode;saveState();renderHome()}));document.querySelectorAll('[data-team]').forEach(b=>b.addEventListener('click',()=>assignOwner(Number(b.dataset.team))));
-  document.getElementById('homeAdmin').addEventListener('click',()=>{currentView='admin';render()});document.getElementById('resetProgress').addEventListener('click',resetProgress);document.getElementById('homeFullscreen').addEventListener('click',toggleFullscreen);document.getElementById('missBtn')?.addEventListener('click',()=>assignOwner(-1));document.getElementById('undoClaim')?.addEventListener('click',undoClaim);
+  document.getElementById('installAppBtn')?.addEventListener('click',installBibleGoldenBell);if(isStandaloneApp())document.getElementById('installAppBtn')?.classList.add('hidden');document.getElementById('homeAdmin').addEventListener('click',()=>{currentView='admin';render()});document.getElementById('resetProgress').addEventListener('click',resetProgress);document.getElementById('homeFullscreen').addEventListener('click',toggleFullscreen);document.getElementById('missBtn')?.addEventListener('click',()=>assignOwner(-1));document.getElementById('undoClaim')?.addEventListener('click',undoClaim);
 }
 async function resetProgress(){const ok=await showResetProgressDialog();if(!ok)return;const wanted=!!document.fullscreenElement;progress=defaultProgress();saveProgress();if(currentView==='home')renderHome();else toast('행사 진행 상태를 초기화했습니다.');if(wanted&&!document.fullscreenElement){try{await enterFullscreen()}catch{}}}
 async function openQuestion(i){const wanted=!!document.fullscreenElement;currentQuestion=i;progress.lastQuestion=i;progress.visited[i]=true;saveProgress();answerVisible=false;currentView='question';await renderQuestion(i);if(wanted&&!document.fullscreenElement){try{await enterFullscreen()}catch{}}}
@@ -341,10 +418,15 @@ async function renderQuestion(i){
       <span>${answerVisible?(q.type==='ox'?'OX 정답':'정답'):(q.type==='ox'?'OX 문제':'문제')}</span>
     </header>
     ${stage}
-    <footer class="question-footer"><button id="answerBtn">${answerVisible?'문제 다시 보기':'정답 보기'}</button></footer>
+    <footer class="question-footer">${answerVisible?`<button class="board-quick-button" id="quickBoardBtn" title="문제판으로" aria-label="문제판으로">${boardGridSvg()}</button>`:''}<button id="answerBtn">${answerVisible?'문제 다시 보기':'정답 보기'}</button></footer>
   </main></div>`;
 
   document.getElementById('boardBtn').addEventListener('click',async()=>{
+    const wanted=!!document.fullscreenElement;
+    answerVisible=false;currentView='home';renderHome();
+    if(wanted&&!document.fullscreenElement){try{await enterFullscreen()}catch{}}
+  });
+  document.getElementById('quickBoardBtn')?.addEventListener('click',async()=>{
     const wanted=!!document.fullscreenElement;
     answerVisible=false;currentView='home';renderHome();
     if(wanted&&!document.fullscreenElement){try{await enterFullscreen()}catch{}}
@@ -389,6 +471,15 @@ async function exportPack(){try{toast('데이터팩을 만드는 중입니다…
 function chooseImport(){const inp=document.getElementById('importFile');inp.value='';inp.click()}
 document.getElementById('importFile').addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;try{await importPack(file);toast('데이터 불러오기 완료');currentView='home';render()}catch(err){console.error(err);alert('이 데이터 파일을 불러올 수 없습니다.\n'+err.message)}})
 async function importPack(file){const buf=await file.arrayBuffer(),u8=new Uint8Array(buf),enc=new TextEncoder(),magic=enc.encode(PACK_MAGIC);let match=u8.length>magic.length+4;for(let i=0;i<magic.length&&match;i++)if(u8[i]!==magic[i])match=false;if(match){const dv=new DataView(buf),headerLen=dv.getUint32(magic.length,true),hs=magic.length+4,he=hs+headerLen;if(he>buf.byteLength)throw new Error('데이터팩 헤더가 손상되었습니다.');const manifest=JSON.parse(new TextDecoder().decode(u8.slice(hs,he)));if(manifest.app!==APP)throw new Error('BibleGoldenBell 4X4 데이터가 아닙니다.');await dbClear();mediaUrlCache.forEach(URL.revokeObjectURL);mediaUrlCache.clear();for(const m of manifest.media||[]){const st=he+Number(m.offset||0),en=st+Number(m.size||0);if(st<he||en>buf.byteLength)throw new Error('미디어 데이터가 손상되었습니다.');await dbPut(m.key,new Blob([buf.slice(st,en)],{type:m.type||'application/octet-stream'}))}state=normalizeState(manifest.state);saveState();progress=defaultProgress();saveProgress();return}const txt=new TextDecoder().decode(u8),old=JSON.parse(txt),src=old.state||old;if(!src.questions)throw new Error('지원하지 않는 데이터 형식입니다.');state=normalizeState(src);saveState();progress=defaultProgress();saveProgress()}
+
+
+if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('./sw.js',{scope:'./',updateViaCache:'none'})
+      .then(reg=>reg.update().catch(()=>{}))
+      .catch(()=>{});
+  });
+}
 
 render();
 })();
