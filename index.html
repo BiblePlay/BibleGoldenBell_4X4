@@ -468,6 +468,51 @@ button,input,textarea,select{font:inherit}button{cursor:pointer}button:focus-vis
 }
 .question-toolbar .media-replay-button[hidden]{display:none !important}
 
+
+/* ===== FINAL TYPOGRAPHY + MC ANSWER ALIGNMENT 2026-08-22 ===== */
+
+/* Preferred maximum scale for text-only screens. Media screens are untouched. */
+.question-stage:not(.visual-question):not(.hidden-stage) .question-text{
+  max-width:min(1540px,94vw);
+  font-size:clamp(42px,5vw,88px);
+  line-height:1.08;
+}
+.question-stage:not(.visual-answer-stage) .answer-direct:not(.ox-answer) .answer-text{
+  max-width:min(1540px,94vw);
+  font-size:clamp(42px,5vw,88px);
+  line-height:1.08;
+}
+
+/* Multiple-choice answer: no outer box, simply centered badge + text. */
+.answer-direct.multiple-answer .answer-choice-result{
+  width:auto;
+  min-height:0;
+  padding:0;
+  margin:0 auto;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:18px;
+}
+.answer-direct.multiple-answer .answer-choice-badge{
+  flex:0 0 54px;
+  width:54px;
+  height:54px;
+  border-radius:9px;
+  display:grid;
+  place-items:center;
+}
+.answer-direct.multiple-answer .answer-choice-text{
+  flex:0 1 auto;
+  text-align:center;
+  width:auto;
+  max-width:1280px;
+}
+
 </style>
 <!-- FINAL-media-cleanup-2026-08-22 -->
 <!-- FINAL-adaptive-question-size-v2-2026-08-22 -->
@@ -476,6 +521,7 @@ button,input,textarea,select{font:inherit}button{cursor:pointer}button:focus-vis
 <!-- BibleGoldenBell_4X4 FINAL COMMON PLAY 2026-08-22 -->
 <!-- BibleGoldenBell_4X4 FINAL ANSWER MEDIA CAP FIX 2026-08-22 -->
 <!-- BibleGoldenBell_4X4 FINAL TEXT BALANCE 2026-08-22 -->
+<!-- BibleGoldenBell_4X4 FINAL TYPOGRAPHY POLISH 2026-08-22 -->
 </head>
 <body>
 <div id="app"></div>
@@ -651,7 +697,7 @@ function fitNonVisualQuestion(stage){
   if(!textEl)return;
   const hasChoices=!!stage.querySelector('.choices,.ox');
   const {w}=innerSize(stage);
-  const maxSize=hasChoices?Math.min(94,Math.max(62,w*.064)):Math.min(110,Math.max(68,w*.062));
+  const maxSize=hasChoices?Math.min(94,Math.max(62,w*.064)):Math.min(88,Math.max(58,w*.052));
   const minSize=hasChoices?30:34;
   textEl.style.fontSize=maxSize+'px';
   textEl.style.lineHeight=hasChoices?'1.09':'1.06';
@@ -804,13 +850,13 @@ function fitPlainAnswer(stage){
   const {w:innerW,h:innerH}=innerSize(stage);
   const len=(textEl.textContent||'').trim().length;
 
-  // Keep plain answers visually comparable to plain questions:
-  // short answers can be large, longer answers step down naturally.
-  const maxSize=len>120?62:len>80?72:len>45?84:94;
+  // Plain answers share the same visual ceiling as plain questions.
+  // Long answers still step down automatically so nothing is clipped.
+  const maxSize=len>120?58:len>80?68:len>45?78:88;
   const minSize=30;
 
-  textEl.style.maxWidth=Math.min(1460,innerW*.94)+'px';
-  fitTextWithin(textEl,maxSize,minSize,innerH,1.10);
+  textEl.style.maxWidth=Math.min(1540,innerW*.94)+'px';
+  fitTextWithin(textEl,maxSize,minSize,innerH,1.08);
 }
 
 function fitQuestionLayout(){
