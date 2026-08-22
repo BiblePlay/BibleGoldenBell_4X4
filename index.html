@@ -115,9 +115,9 @@ button,input,textarea,select{font:inherit}button{cursor:pointer}button:focus-vis
 .question-stage.visual-question{gap:12px}
 
 .question-stage .question-text{
-  width:100%;max-width:1380px;margin:0 auto;padding:0;
-  text-align:center;color:#fff;font-size:120px;line-height:1.08;font-weight:950;
-  letter-spacing:-.055em;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere;
+  width:100%;max-width:1540px;margin:0 auto;padding:0;
+  text-align:center;color:#fff;font-size:110px;line-height:1.08;font-weight:950;
+  letter-spacing:-.045em;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere;
 }
 .question-stage.choice-question .question-text{margin-bottom:28px}
 .question-stage.visual-question .question-text{
@@ -174,9 +174,9 @@ button,input,textarea,select{font:inherit}button{cursor:pointer}button:focus-vis
   align-items:center;justify-content:center;gap:18px;overflow:hidden;text-align:center;
 }
 .answer-direct .answer-text{
-  width:100%;max-width:1180px;margin:0;padding:0;color:#fff;
-  font-size:clamp(50px,5.5vw,92px);line-height:1.14;font-weight:950;
-  letter-spacing:-.055em;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere;
+  width:100%;max-width:1460px;margin:0;padding:0;color:#fff;
+  font-size:clamp(48px,5.2vw,94px);line-height:1.10;font-weight:950;
+  letter-spacing:-.045em;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere;
 }
 .answer-direct .answer-text.medium{font-size:clamp(38px,4.3vw,70px)}
 .answer-direct .answer-text.long{font-size:clamp(28px,3.3vw,52px)}
@@ -475,6 +475,7 @@ button,input,textarea,select{font:inherit}button{cursor:pointer}button:focus-vis
 <!-- BibleGoldenBell_4X4 FINAL LAST 2026-08-22 -->
 <!-- BibleGoldenBell_4X4 FINAL COMMON PLAY 2026-08-22 -->
 <!-- BibleGoldenBell_4X4 FINAL ANSWER MEDIA CAP FIX 2026-08-22 -->
+<!-- BibleGoldenBell_4X4 FINAL TEXT BALANCE 2026-08-22 -->
 </head>
 <body>
 <div id="app"></div>
@@ -650,7 +651,7 @@ function fitNonVisualQuestion(stage){
   if(!textEl)return;
   const hasChoices=!!stage.querySelector('.choices,.ox');
   const {w}=innerSize(stage);
-  const maxSize=hasChoices?Math.min(98,Math.max(64,w*.068)):Math.min(132,Math.max(78,w*.082));
+  const maxSize=hasChoices?Math.min(94,Math.max(62,w*.064)):Math.min(110,Math.max(68,w*.062));
   const minSize=hasChoices?30:34;
   textEl.style.fontSize=maxSize+'px';
   textEl.style.lineHeight=hasChoices?'1.09':'1.06';
@@ -795,6 +796,23 @@ function fitVisualAnswer(stage){
   }
 }
 
+
+function fitPlainAnswer(stage){
+  const direct=stage.querySelector('.answer-direct:not(.visual-answer):not(.ox-answer)');
+  const textEl=direct?.querySelector('.answer-text');
+  if(!direct||!textEl)return;
+  const {w:innerW,h:innerH}=innerSize(stage);
+  const len=(textEl.textContent||'').trim().length;
+
+  // Keep plain answers visually comparable to plain questions:
+  // short answers can be large, longer answers step down naturally.
+  const maxSize=len>120?62:len>80?72:len>45?84:94;
+  const minSize=30;
+
+  textEl.style.maxWidth=Math.min(1460,innerW*.94)+'px';
+  fitTextWithin(textEl,maxSize,minSize,innerH,1.10);
+}
+
 function fitQuestionLayout(){
   const stage=document.querySelector('.question-stage');
   if(!stage)return;
@@ -802,8 +820,9 @@ function fitQuestionLayout(){
     const answerMedia=stage.querySelector('.answer-media');
     if(answerMedia){answerMedia.style.width='';answerMedia.style.height='';answerMedia.style.flex=''}
     const answerText=stage.querySelector('.answer-text');
-    if(answerText){answerText.style.fontSize='';answerText.style.lineHeight=''}
+    if(answerText){answerText.style.fontSize='';answerText.style.lineHeight='';answerText.style.maxWidth=''}
     if(stage.classList.contains('visual-answer-stage'))fitVisualAnswer(stage);
+    else if(!stage.querySelector('.ox-answer'))fitPlainAnswer(stage);
     return;
   }
   // Clear only inline sizing created by this engine before recalculation.
