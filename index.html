@@ -640,6 +640,67 @@ button,input,textarea,select{font:inherit}button{cursor:pointer}button:focus-vis
   width:132px;
 }
 
+
+/* ===== FINAL MINI TEAM CORRECTION CONTROLLER 2026-08-23 ===== */
+.mini-edit-actions{
+  width:100%;
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:5px;
+  margin:1px 0 2px;
+}
+.mini-edit-action{
+  min-height:28px;
+  padding:5px 8px;
+  border-radius:7px;
+  border:1px solid #334d68;
+  background:#0b1a29;
+  color:#aab4c2;
+  font-size:10px;
+  font-weight:950;
+  line-height:1;
+}
+.mini-edit-action.team-1.is-selected{
+  color:#fff;
+  border-color:var(--team1);
+  background:#9b5a00;
+}
+.mini-edit-action.team-2.is-selected{
+  color:#fff;
+  border-color:var(--team2);
+  background:#205f93;
+}
+.mini-edit-action.team-3.is-selected{
+  color:#fff;
+  border-color:var(--team3);
+  background:#58499f;
+}
+.mini-edit-action.miss.is-selected{
+  color:#fff;
+  border-color:#7e8998;
+  background:#3b4552;
+}
+.mini-edit-action.restore.is-selected{
+  color:var(--accent);
+  border-color:var(--accent);
+  background:#1a2532;
+}
+.mini-team-editor-head>span{
+  color:#6f7b8b;
+  font-size:10px;
+  font-weight:900;
+}
+.mini-team-cell.is-unvisited{
+  color:#566170;
+  border-color:#1f3348;
+  background:#08131f;
+}
+.mini-team-cell:disabled{
+  opacity:.34;
+  cursor:not-allowed;
+}
+
 </style>
 <!-- FINAL-media-cleanup-2026-08-22 -->
 <!-- FINAL-adaptive-question-size-v2-2026-08-22 -->
@@ -651,6 +712,7 @@ button,input,textarea,select{font:inherit}button{cursor:pointer}button:focus-vis
 <!-- BibleGoldenBell_4X4 FINAL TYPOGRAPHY POLISH 2026-08-22 -->
 <!-- BibleGoldenBell_4X4 FINAL TEXTAREA + TEXT FIT 2026-08-23 -->
 <!-- BibleGoldenBell_4X4 FINAL MINI TEAM EDITOR + THIN BLANKS 2026-08-23 -->
+<!-- BibleGoldenBell_4X4 FINAL BINGO + MINI CORRECTION 2026-08-23 -->
 </head>
 <body>
 <div id="app"></div>
@@ -669,7 +731,7 @@ const LOGO_DATA='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAWEAAADqCAYAAABz/
 const TYPE_LABELS={general:'일반·초성·빈칸',ox:'OX',image:'그림퀴즈',person:'인물퀴즈',video:'영상퀴즈',hidden:'숨은그림찾기'};
 const ANSWER_LABELS={short:'단답형',multiple:'4지선다'};
 const TEAM_META={1:{name:'1팀',color:'#f4a11a'},2:{name:'2팀',color:'#4e9be8'},3:{name:'3팀',color:'#8f7ee8'}};
-let adminIndex=0,adminPreviewMode='question',answerVisible=false,currentView='home',currentQuestion=0,autosaveTimer=null;
+let adminIndex=0,adminPreviewMode='question',answerVisible=false,currentView='home',currentQuestion=0,autosaveTimer=null,miniEditSelection='1';
 const mediaUrlCache=new Map();
 
 function emptyQuestion(n){return {number:n,type:'general',answerType:'short',question:'',answer:'',hint:'',choices:['','','',''],correctChoice:0,oxAnswer:'O',hiddenShowText:false,audioPlayback:'manual',answerAudioPlayback:'manual',videoPlayback:'manual',answerVideoPlayback:'manual',questionMediaLayout:'full',answerMediaLayout:'full',media:{questionImage:null,answerImage:null,video:null,answerVideo:null,audio:null,answerAudio:null},mediaNames:{}}}
@@ -692,7 +754,7 @@ function normalizeQuestion(raw,n){
 function normalizeState(raw){const d=defaultState(),s=raw&&typeof raw==='object'?raw:{};d.questions=Array.from({length:16},(_,i)=>normalizeQuestion((s.questions||[])[i],i+1));const mode=String(s.settings?.mode||s.settings?.gameMode||'3');d.settings.mode=['individual','2','3'].includes(mode)?mode:'3';return d}
 function loadState(){try{const r=localStorage.getItem(LS_KEY);return r?normalizeState(JSON.parse(r)):defaultState()}catch{return defaultState()}}
 function saveState(){localStorage.setItem(LS_KEY,JSON.stringify(state))}
-function loadProgress(){try{const r=JSON.parse(localStorage.getItem(PROGRESS_KEY)||'null');if(!r)return defaultProgress();return {...defaultProgress(),...r,owners:[...(r.owners||[]),...Array(16).fill(0)].slice(0,16),visited:[...(r.visited||[]),...Array(16).fill(false)].slice(0,16),winning:Array.isArray(r.winning)?r.winning:[]}}catch{return defaultProgress()}}
+function loadProgress(){try{const r=JSON.parse(localStorage.getItem(PROGRESS_KEY)||'null');if(!r)return defaultProgress();const owners=[...(r.owners||[]),...Array(16).fill(0)].slice(0,16).map(v=>{const n=Number(v);return n>=1&&n<=3?n:0});const visited=[...(r.visited||[]),...Array(16).fill(false)].slice(0,16).map(Boolean);return {...defaultProgress(),...r,owners,visited,winning:[]}}catch{return defaultProgress()}}
 function saveProgress(){localStorage.setItem(PROGRESS_KEY,JSON.stringify(progress))}
 let state=loadState(),progress=loadProgress();
 
@@ -767,53 +829,120 @@ async function mediaUrl(ref){if(!ref)return null;if(/^data:|^blob:|^https?:|^\//
 
 function render(){if(currentView==='home')renderHome();else if(currentView==='admin')renderAdmin();else renderQuestion(currentQuestion)}
 
-function recomputeWinning(){
-  progress.winning=[];
-  const mode=state.settings.mode;
-  const teamCount=mode==='2'?2:mode==='3'?3:0;
-  for(let team=1;team<=teamCount;team++){
-    const line=findWinningLine(team);
-    if(line){progress.winning=line;break}
-  }
+const BINGO_LINES=[
+  [0,1,2,3],[4,5,6,7],[8,9,10,11],[12,13,14,15],
+  [0,4,8,12],[1,5,9,13],[2,6,10,14],[3,7,11,15],
+  [0,5,10,15],[3,6,9,12]
+];
+
+function activeTeamCount(){
+  return state.settings.mode==='2'?2:state.settings.mode==='3'?3:0;
 }
-function cycleMiniOwner(index){
-  const mode=state.settings.mode;
-  const teamCount=mode==='2'?2:mode==='3'?3:0;
+
+function findWinningLines(team){
+  const target=Number(team);
+  return BINGO_LINES.filter(line=>line.every(i=>progress.visited[i]===true&&Number(progress.owners[i])===target));
+}
+
+/* Compatibility helper for any legacy internal call. */
+function findWinningLine(team){
+  return findWinningLines(team)[0]||null;
+}
+
+function recomputeWinning(){
+  const teamCount=activeTeamCount();
+  const winningCells=new Set();
+  const byTeam={};
+
+  for(let team=1;team<=teamCount;team++){
+    const lines=findWinningLines(team);
+    byTeam[team]=lines;
+    lines.forEach(line=>line.forEach(i=>winningCells.add(i)));
+  }
+
+  progress.winning=[...winningCells].sort((a,b)=>a-b);
+  return byTeam;
+}
+
+function normalizeMiniSelection(teamCount){
+  const value=String(miniEditSelection);
+  if(value==='miss'||value==='restore')return value;
+  const team=Number(value);
+  if(team>=1&&team<=teamCount)return String(team);
+  miniEditSelection='1';
+  return '1';
+}
+
+function applyMiniEdit(index){
+  const teamCount=activeTeamCount();
   if(!teamCount)return;
 
-  const current=Number(progress.owners[index]||0);
-  const normalized=current>0?current:0;
-  const next=normalized>=teamCount?0:normalized+1;
+  if(!progress.visited[index]){
+    toast('아직 풀지 않은 문제는 수정할 수 없습니다.');
+    return;
+  }
 
-  progress.owners[index]=next;
+  const selection=normalizeMiniSelection(teamCount);
+  const beforeCounts={};
+  for(let team=1;team<=teamCount;team++)beforeCounts[team]=findWinningLines(team).length;
+
+  if(selection==='restore'){
+    progress.owners[index]=0;
+    progress.visited[index]=false;
+    if(progress.lastQuestion===index)progress.lastQuestion=null;
+  }else if(selection==='miss'){
+    progress.owners[index]=0;
+    progress.visited[index]=true;
+  }else{
+    progress.owners[index]=Number(selection);
+    progress.visited[index]=true;
+  }
+
   progress.lastClaim=null;
-  recomputeWinning();
+  const after=recomputeWinning();
   saveProgress();
   renderHome();
+
+  if(selection!=='miss'&&selection!=='restore'){
+    const team=Number(selection);
+    if((after[team]?.length||0)>(beforeCounts[team]||0)){
+      setTimeout(()=>celebrate(team),90);
+    }
+  }
 }
+
 function miniTeamEditorMarkup(teamCount){
+  const selected=normalizeMiniSelection(teamCount);
+
+  const actionButtons=[];
+  for(let team=1;team<=teamCount;team++){
+    actionButtons.push(`<button class="mini-edit-action team-${team} ${selected===String(team)?'is-selected':''}" data-mini-action="${team}">${team}팀</button>`);
+  }
+  actionButtons.push(`<button class="mini-edit-action miss ${selected==='miss'?'is-selected':''}" data-mini-action="miss">미획득</button>`);
+  actionButtons.push(`<button class="mini-edit-action restore ${selected==='restore'?'is-selected':''}" data-mini-action="restore">문제 복구</button>`);
+
   const cells=Array.from({length:16},(_,i)=>{
-    const raw=Number(progress.owners[i]||0);
-    const owner=raw>0?raw:0;
+    const owner=Number(progress.owners[i]||0);
+    const visited=progress.visited[i]===true;
     const cls=[
-      progress.visited[i]&&!owner?'is-played':'',
-      owner>0?'team-'+owner:''
+      visited&&!owner?'is-played':'',
+      visited&&owner>0?'team-'+owner:'',
+      !visited?'is-unvisited':''
     ].filter(Boolean).join(' ');
-    return `<button class="mini-team-cell ${cls}" data-mini-cell="${i}" ${teamCount?'':'disabled'} title="${i+1}번 색 수정">${i+1}</button>`;
+
+    return `<button class="mini-team-cell ${cls}" data-mini-cell="${i}" ${visited?'':'disabled'} title="${visited?`${i+1}번 상태 수정`:`${i+1}번 · 아직 안 푼 문제`}">${i+1}</button>`;
   }).join('');
 
-  const legend=teamCount
-    ? `<span class="mini-team-legend"><i class="l1"></i>${teamCount>=2?'<i class="l2"></i>':''}${teamCount>=3?'<i class="l3"></i>':''}</span>`
-    : '';
-
   return `<div class="mini-team-editor">
-    <div class="mini-team-editor-head"><strong>팀 색 수정</strong>${legend}</div>
+    <div class="mini-team-editor-head"><strong>팀 색 수정</strong><span>정정 전용</span></div>
+    <div class="mini-edit-actions">${actionButtons.join('')}</div>
     <div class="mini-team-grid">${cells}</div>
-    <p class="mini-team-help">${teamCount?'클릭할 때마다 팀 색 → 미획득 순서로 변경됩니다.':'2팀 또는 3팀 모드에서 사용합니다.'}</p>
+    <p class="mini-team-help">위에서 상태를 선택한 뒤, 이미 푼 번호만 눌러 수정합니다.</p>
   </div>`;
 }
 
 function renderHome(){
+  recomputeWinning();
   const mode=state.settings.mode,teamCount=mode==='2'?2:mode==='3'?3:0,last=progress.lastQuestion;
   const cells=state.questions.map((q,i)=>{const rawOwner=Number(progress.owners[i]||0),owner=rawOwner>0?rawOwner:0;const cls=[progress.visited[i]&&!owner?'is-played':'',owner>0?'is-claimed team-'+owner:'',progress.winning.includes(i)?'is-bingo-cell':'',last===i?'is-pending':''].filter(Boolean).join(' ');return `<button class="master-score-cell ${cls}" data-cell="${i}">${i+1}</button>`}).join('');
   let teams='';for(let id=1;id<=teamCount;id++){teams+=`<button class="team-${id===1?'one':id===2?'two':'three'}" data-team="${id}" ${last==null?'disabled':''}><span class="team-color-dot"></span><strong>${id}팀</strong></button>`}
@@ -821,13 +950,13 @@ function renderHome(){
   document.getElementById('app').innerHTML=`<main class="master-screen"><section class="master-board-panel"><header class="master-board-titlebar"><div class="master-board-title"><span>도전 바이블</span><strong>골든벨</strong></div><div class="master-title-actions"><button class="master-install-button" id="installAppBtn" title="BibleGoldenBell 바로가기 설치" aria-label="BibleGoldenBell 바로가기 설치">${installHomeSvg()}</button><button class="master-admin-button" id="homeAdmin">⚙ 관리자 모드</button></div></header><div class="master-board-grid-4x4">${cells}</div><footer class="master-board-footer"><div class="master-footer-actions"><button id="resetProgress">↻ 전체 초기화</button><button id="homeFullscreen">↗ 전체화면</button></div></footer></section><aside class="master-sidebar"><section class="master-logo-panel"><img src="${LOGO_DATA}" alt="도전 바이블 골든벨"></section><section class="bingo-control-panel"><div class="bingo-control-heading"><span class="live-dot"></span>GAME MODE</div><div class="bingo-mode-buttons"><button data-mode="individual" class="${mode==='individual'?'is-active':''}">개인</button><button data-mode="2" class="${mode==='2'?'is-active':''}">2팀</button><button data-mode="3" class="${mode==='3'?'is-active':''}">3팀</button></div>${lower}</section></aside></main>`;
   document.querySelectorAll('[data-cell]').forEach(b=>b.addEventListener('click',()=>openQuestion(Number(b.dataset.cell))));
   document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{state.settings.mode=b.dataset.mode;saveState();renderHome()}));document.querySelectorAll('[data-team]').forEach(b=>b.addEventListener('click',()=>assignOwner(Number(b.dataset.team))));
-  document.getElementById('installAppBtn')?.addEventListener('click',installBibleGoldenBell);if(isStandaloneApp())document.getElementById('installAppBtn')?.classList.add('hidden');document.getElementById('homeAdmin').addEventListener('click',()=>{currentView='admin';render()});document.getElementById('resetProgress').addEventListener('click',resetProgress);document.getElementById('homeFullscreen').addEventListener('click',toggleFullscreen);document.querySelectorAll('[data-mini-cell]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();cycleMiniOwner(Number(b.dataset.miniCell))}));
+  document.getElementById('installAppBtn')?.addEventListener('click',installBibleGoldenBell);if(isStandaloneApp())document.getElementById('installAppBtn')?.classList.add('hidden');document.getElementById('homeAdmin').addEventListener('click',()=>{currentView='admin';render()});document.getElementById('resetProgress').addEventListener('click',resetProgress);document.getElementById('homeFullscreen').addEventListener('click',toggleFullscreen);document.querySelectorAll('[data-mini-action]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();miniEditSelection=String(b.dataset.miniAction);renderHome()}));document.querySelectorAll('[data-mini-cell]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();applyMiniEdit(Number(b.dataset.miniCell))}));
 }
 async function resetProgress(){const ok=await showResetProgressDialog();if(!ok)return;const wanted=!!document.fullscreenElement;progress=defaultProgress();saveProgress();if(currentView==='home')renderHome();else toast('행사 진행 상태를 초기화했습니다.');if(wanted&&!document.fullscreenElement){try{await enterFullscreen()}catch{}}}
 async function openQuestion(i){const wanted=!!document.fullscreenElement;currentQuestion=i;progress.lastQuestion=i;progress.visited[i]=true;saveProgress();answerVisible=false;currentView='question';await renderQuestion(i);if(wanted&&!document.fullscreenElement){try{await enterFullscreen()}catch{}}}
-function assignOwner(team){const i=progress.lastQuestion;if(i==null){toast('먼저 문제를 하나 풀어주세요.');return}progress.lastClaim={index:i,previous:progress.owners[i]||0};progress.owners[i]=team;progress.winning=[];if(team>0){const line=findWinningLine(team);if(line)progress.winning=line}saveProgress();renderHome();if(progress.winning.length)setTimeout(()=>celebrate(team),90)}
-function undoClaim(){if(!progress.lastClaim)return;const {index,previous}=progress.lastClaim;progress.owners[index]=previous;progress.winning=[];progress.lastClaim=null;saveProgress();renderHome()}
-function findWinningLine(team){const lines=[];for(let r=0;r<4;r++)lines.push([r*4,r*4+1,r*4+2,r*4+3]);for(let c=0;c<4;c++)lines.push([c,c+4,c+8,c+12]);lines.push([0,5,10,15],[3,6,9,12]);return lines.find(line=>line.every(i=>progress.owners[i]===team))||null}
+function assignOwner(team){const i=progress.lastQuestion;if(i==null){toast('먼저 문제를 하나 풀어주세요.');return}const before=findWinningLines(team).length;progress.lastClaim={index:i,previous:progress.owners[i]||0};progress.visited[i]=true;progress.owners[i]=Number(team);const after=recomputeWinning();saveProgress();renderHome();if((after[team]?.length||0)>before)setTimeout(()=>celebrate(team),90)}
+function undoClaim(){if(!progress.lastClaim)return;const {index,previous}=progress.lastClaim;progress.owners[index]=Number(previous)||0;progress.lastClaim=null;recomputeWinning();saveProgress();renderHome()}
+
 function celebrate(team){const meta=TEAM_META[team]||TEAM_META[1],ov=document.createElement('div');ov.className='bingo-celebration';let conf='';for(let i=0;i<80;i++){const colors=[meta.color,'#fff','#ffcf70','#43d17a','#6ca8ff'];conf+=`<i class="confetti-piece" style="left:${(i*37)%100}%;background:${colors[i%colors.length]};animation-delay:${(i%12)*.04}s;transform:rotate(${i*43%180}deg)"></i>`}ov.innerHTML=conf+`<div class="bingo-card"><span>${meta.name}</span><strong>BINGO!</strong></div>`;document.body.appendChild(ov);setTimeout(()=>ov.remove(),3250)}
 
 // Unified measured question layout engine. One observer, one fitting path.
