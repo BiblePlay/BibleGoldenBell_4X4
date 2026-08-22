@@ -517,6 +517,129 @@ button,input,textarea,select{font:inherit}button{cursor:pointer}button:focus-vis
   max-width:1280px;
 }
 
+
+/* ===== FINAL THIN BLANK SQUARE + MINI TEAM EDITOR 2026-08-23 ===== */
+.thin-blank-square{
+  display:inline-block;
+  width:.72em;
+  height:.72em;
+  margin:0 .035em;
+  box-sizing:border-box;
+  border:.065em solid currentColor;
+  border-radius:.035em;
+  vertical-align:-.035em;
+}
+
+/* Sidebar mini editor: mirrors the 4x4 board but never opens a question. */
+.master-logo-panel{
+  padding:10px 22px 12px;
+  display:grid;
+  grid-template-rows:minmax(42px,1fr) auto;
+  align-items:center;
+  gap:8px;
+}
+.master-logo-panel img{
+  width:100%;
+  max-height:92px;
+  object-fit:contain;
+}
+.mini-team-editor{
+  width:100%;
+  display:grid;
+  justify-items:center;
+  gap:6px;
+}
+.mini-team-editor-head{
+  width:100%;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  color:#8f9bad;
+  font-size:11px;
+  font-weight:900;
+}
+.mini-team-editor-head strong{color:#f7f8fa;font-size:12px}
+.mini-team-legend{
+  display:flex;
+  align-items:center;
+  gap:7px;
+}
+.mini-team-legend i{
+  width:9px;
+  height:9px;
+  display:block;
+  border-radius:999px;
+}
+.mini-team-legend .l1{background:var(--team1)}
+.mini-team-legend .l2{background:var(--team2)}
+.mini-team-legend .l3{background:var(--team3)}
+.mini-team-grid{
+  width:122px;
+  aspect-ratio:1/1;
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  grid-template-rows:repeat(4,1fr);
+  gap:4px;
+}
+.mini-team-cell{
+  min-width:0;
+  min-height:0;
+  padding:0;
+  display:grid;
+  place-items:center;
+  color:#98a2b2;
+  border:1px solid #294867;
+  border-radius:5px;
+  background:#0a1928;
+  font-size:11px;
+  font-weight:950;
+  line-height:1;
+}
+.mini-team-cell.is-played{
+  color:#c4cad3;
+  border-color:#596574;
+  background:#2b3340;
+}
+.mini-team-cell.team-1{
+  color:#fff;
+  border-color:var(--team1);
+  background:#9b5a00;
+}
+.mini-team-cell.team-2{
+  color:#fff;
+  border-color:var(--team2);
+  background:#205f93;
+}
+.mini-team-cell.team-3{
+  color:#fff;
+  border-color:var(--team3);
+  background:#58499f;
+}
+.mini-team-cell:disabled{
+  opacity:.38;
+  cursor:default;
+}
+.mini-team-help{
+  margin:0;
+  color:#6f7b8b;
+  font-size:10px;
+  line-height:1.25;
+  text-align:center;
+}
+/* The old secondary assignment row is no longer used. */
+.bingo-secondary-actions{display:none!important}
+
+
+/* FINAL mini team editor placement: directly below team buttons */
+.bingo-control-panel .mini-team-editor{
+  margin-top:12px;
+  padding-top:10px;
+  border-top:1px solid #1f3550;
+}
+.bingo-control-panel .mini-team-grid{
+  width:132px;
+}
+
 </style>
 <!-- FINAL-media-cleanup-2026-08-22 -->
 <!-- FINAL-adaptive-question-size-v2-2026-08-22 -->
@@ -527,6 +650,7 @@ button,input,textarea,select{font:inherit}button{cursor:pointer}button:focus-vis
 <!-- BibleGoldenBell_4X4 FINAL TEXT BALANCE 2026-08-22 -->
 <!-- BibleGoldenBell_4X4 FINAL TYPOGRAPHY POLISH 2026-08-22 -->
 <!-- BibleGoldenBell_4X4 FINAL TEXTAREA + TEXT FIT 2026-08-23 -->
+<!-- BibleGoldenBell_4X4 FINAL MINI TEAM EDITOR + THIN BLANKS 2026-08-23 -->
 </head>
 <body>
 <div id="app"></div>
@@ -573,6 +697,7 @@ function saveProgress(){localStorage.setItem(PROGRESS_KEY,JSON.stringify(progres
 let state=loadState(),progress=loadProgress();
 
 function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
+function displayText(v){return esc(v).replace(/□/g,'<span class="thin-blank-square" aria-label="빈칸"></span>')}
 function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.remove('show'),1800)}
 function qKey(n,kind){return `q${n}_${kind}`}
 function dateStamp(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
@@ -641,15 +766,62 @@ function revokeMedia(key){if(mediaUrlCache.has(key)){URL.revokeObjectURL(mediaUr
 async function mediaUrl(ref){if(!ref)return null;if(/^data:|^blob:|^https?:|^\//.test(ref))return ref;if(mediaUrlCache.has(ref))return mediaUrlCache.get(ref);const b=await dbGet(ref);if(!b)return null;const u=URL.createObjectURL(b);mediaUrlCache.set(ref,u);return u}
 
 function render(){if(currentView==='home')renderHome();else if(currentView==='admin')renderAdmin();else renderQuestion(currentQuestion)}
+
+function recomputeWinning(){
+  progress.winning=[];
+  const mode=state.settings.mode;
+  const teamCount=mode==='2'?2:mode==='3'?3:0;
+  for(let team=1;team<=teamCount;team++){
+    const line=findWinningLine(team);
+    if(line){progress.winning=line;break}
+  }
+}
+function cycleMiniOwner(index){
+  const mode=state.settings.mode;
+  const teamCount=mode==='2'?2:mode==='3'?3:0;
+  if(!teamCount)return;
+
+  const current=Number(progress.owners[index]||0);
+  const normalized=current>0?current:0;
+  const next=normalized>=teamCount?0:normalized+1;
+
+  progress.owners[index]=next;
+  progress.lastClaim=null;
+  recomputeWinning();
+  saveProgress();
+  renderHome();
+}
+function miniTeamEditorMarkup(teamCount){
+  const cells=Array.from({length:16},(_,i)=>{
+    const raw=Number(progress.owners[i]||0);
+    const owner=raw>0?raw:0;
+    const cls=[
+      progress.visited[i]&&!owner?'is-played':'',
+      owner>0?'team-'+owner:''
+    ].filter(Boolean).join(' ');
+    return `<button class="mini-team-cell ${cls}" data-mini-cell="${i}" ${teamCount?'':'disabled'} title="${i+1}번 색 수정">${i+1}</button>`;
+  }).join('');
+
+  const legend=teamCount
+    ? `<span class="mini-team-legend"><i class="l1"></i>${teamCount>=2?'<i class="l2"></i>':''}${teamCount>=3?'<i class="l3"></i>':''}</span>`
+    : '';
+
+  return `<div class="mini-team-editor">
+    <div class="mini-team-editor-head"><strong>팀 색 수정</strong>${legend}</div>
+    <div class="mini-team-grid">${cells}</div>
+    <p class="mini-team-help">${teamCount?'클릭할 때마다 팀 색 → 미획득 순서로 변경됩니다.':'2팀 또는 3팀 모드에서 사용합니다.'}</p>
+  </div>`;
+}
+
 function renderHome(){
   const mode=state.settings.mode,teamCount=mode==='2'?2:mode==='3'?3:0,last=progress.lastQuestion;
-  const cells=state.questions.map((q,i)=>{const owner=Number(progress.owners[i]||0);const cls=[progress.visited[i]&&!owner?'is-played':'',owner>0?'is-claimed team-'+owner:'',progress.winning.includes(i)?'is-bingo-cell':'',last===i?'is-pending':''].filter(Boolean).join(' ');return `<button class="master-score-cell ${cls}" data-cell="${i}">${i+1}</button>`}).join('');
+  const cells=state.questions.map((q,i)=>{const rawOwner=Number(progress.owners[i]||0),owner=rawOwner>0?rawOwner:0;const cls=[progress.visited[i]&&!owner?'is-played':'',owner>0?'is-claimed team-'+owner:'',progress.winning.includes(i)?'is-bingo-cell':'',last===i?'is-pending':''].filter(Boolean).join(' ');return `<button class="master-score-cell ${cls}" data-cell="${i}">${i+1}</button>`}).join('');
   let teams='';for(let id=1;id<=teamCount;id++){teams+=`<button class="team-${id===1?'one':id===2?'two':'three'}" data-team="${id}" ${last==null?'disabled':''}><span class="team-color-dot"></span><strong>${id}팀</strong></button>`}
-  const lower=teamCount?`<div class="bingo-pending-card"><span>방금 푼 문제</span><strong>${last==null?'—':last+1+'번'}</strong><p>${last==null?'문제를 푼 뒤 팀 색을 선택합니다.':'맞힌 팀의 색을 누르세요.'}</p></div><div class="bingo-team-buttons">${teams}</div><div class="bingo-secondary-actions"><button id="missBtn" ${last==null?'disabled':''}>미획득</button><button id="undoClaim" ${!progress.lastClaim?'disabled':''}>↶ 배정 취소</button></div>`:`<div class="bingo-solo-card"><strong>개인 문제판</strong><p>문제를 선택하고 정답을 확인하면 사용한 번호가 표시됩니다.</p></div>`;
+  const lower=teamCount?`<div class="bingo-pending-card"><span>방금 푼 문제</span><strong>${last==null?'—':last+1+'번'}</strong><p>${last==null?'문제를 푼 뒤 팀 색을 선택합니다.':'맞힌 팀의 색을 누르세요.'}</p></div><div class="bingo-team-buttons">${teams}</div>${miniTeamEditorMarkup(teamCount)}`:`<div class="bingo-solo-card"><strong>개인 문제판</strong><p>문제를 선택하고 정답을 확인하면 사용한 번호가 표시됩니다.</p></div>`;
   document.getElementById('app').innerHTML=`<main class="master-screen"><section class="master-board-panel"><header class="master-board-titlebar"><div class="master-board-title"><span>도전 바이블</span><strong>골든벨</strong></div><div class="master-title-actions"><button class="master-install-button" id="installAppBtn" title="BibleGoldenBell 바로가기 설치" aria-label="BibleGoldenBell 바로가기 설치">${installHomeSvg()}</button><button class="master-admin-button" id="homeAdmin">⚙ 관리자 모드</button></div></header><div class="master-board-grid-4x4">${cells}</div><footer class="master-board-footer"><div class="master-footer-actions"><button id="resetProgress">↻ 전체 초기화</button><button id="homeFullscreen">↗ 전체화면</button></div></footer></section><aside class="master-sidebar"><section class="master-logo-panel"><img src="${LOGO_DATA}" alt="도전 바이블 골든벨"></section><section class="bingo-control-panel"><div class="bingo-control-heading"><span class="live-dot"></span>GAME MODE</div><div class="bingo-mode-buttons"><button data-mode="individual" class="${mode==='individual'?'is-active':''}">개인</button><button data-mode="2" class="${mode==='2'?'is-active':''}">2팀</button><button data-mode="3" class="${mode==='3'?'is-active':''}">3팀</button></div>${lower}</section></aside></main>`;
   document.querySelectorAll('[data-cell]').forEach(b=>b.addEventListener('click',()=>openQuestion(Number(b.dataset.cell))));
   document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{state.settings.mode=b.dataset.mode;saveState();renderHome()}));document.querySelectorAll('[data-team]').forEach(b=>b.addEventListener('click',()=>assignOwner(Number(b.dataset.team))));
-  document.getElementById('installAppBtn')?.addEventListener('click',installBibleGoldenBell);if(isStandaloneApp())document.getElementById('installAppBtn')?.classList.add('hidden');document.getElementById('homeAdmin').addEventListener('click',()=>{currentView='admin';render()});document.getElementById('resetProgress').addEventListener('click',resetProgress);document.getElementById('homeFullscreen').addEventListener('click',toggleFullscreen);document.getElementById('missBtn')?.addEventListener('click',()=>assignOwner(-1));document.getElementById('undoClaim')?.addEventListener('click',undoClaim);
+  document.getElementById('installAppBtn')?.addEventListener('click',installBibleGoldenBell);if(isStandaloneApp())document.getElementById('installAppBtn')?.classList.add('hidden');document.getElementById('homeAdmin').addEventListener('click',()=>{currentView='admin';render()});document.getElementById('resetProgress').addEventListener('click',resetProgress);document.getElementById('homeFullscreen').addEventListener('click',toggleFullscreen);document.querySelectorAll('[data-mini-cell]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();cycleMiniOwner(Number(b.dataset.miniCell))}));
 }
 async function resetProgress(){const ok=await showResetProgressDialog();if(!ok)return;const wanted=!!document.fullscreenElement;progress=defaultProgress();saveProgress();if(currentView==='home')renderHome();else toast('행사 진행 상태를 초기화했습니다.');if(wanted&&!document.fullscreenElement){try{await enterFullscreen()}catch{}}}
 async function openQuestion(i){const wanted=!!document.fullscreenElement;currentQuestion=i;progress.lastQuestion=i;progress.visited[i]=true;saveProgress();answerVisible=false;currentView='question';await renderQuestion(i);if(wanted&&!document.fullscreenElement){try{await enterFullscreen()}catch{}}}
@@ -968,19 +1140,19 @@ async function renderQuestion(i){
     if(isHidden){
       let hidden='';
       if(qImg)hidden+=`<div class="media-stage"><img src="${qImg}" alt="숨은그림 문제"></div>`;
-      if(q.hiddenShowText&&qt)hidden+=`<div class="question-text">${esc(qt)}</div>`;
+      if(q.hiddenShowText&&qt)hidden+=`<div class="question-text">${displayText(qt)}</div>`;
       stage=`<section class="question-stage hidden-stage ${qImg?'visual-question media-layout-'+q.questionMediaLayout:''}">${hidden}</section>`;
     }else{
       let content='';
-      if(q.hint)content+=`<div class="hint">힌트 · ${esc(q.hint)}</div>`;
+      if(q.hint)content+=`<div class="hint">힌트 · ${displayText(q.hint)}</div>`;
       if(useVideo)content+=`<div class="media-stage"><video src="${video}" controls playsinline preload="metadata"></video></div>`;
       else if(useImage)content+=`<div class="media-stage"><img src="${qImg}" alt="문제 이미지"></div>`;
-      if(qt)content+=`<div class="question-text">${esc(qt)}</div>`;
+      if(qt)content+=`<div class="question-text">${displayText(qt)}</div>`;
       if(q.type==='ox'){
         content+=`<div class="ox"><div class="o">O</div><div class="x">X</div></div>`;
       }else if(q.answerType==='multiple'){
         const filledChoices=(q.choices||[]).map((c,n)=>({c:String(c||'').trim(),n})).filter(x=>x.c);
-        if(filledChoices.length)content+=`<div class="choices">${filledChoices.map(x=>`<div class="choice"><span class="n">${x.n+1}</span><span>${esc(x.c)}</span></div>`).join('')}</div>`;
+        if(filledChoices.length)content+=`<div class="choices">${filledChoices.map(x=>`<div class="choice"><span class="n">${x.n+1}</span><span>${displayText(x.c)}</span></div>`).join('')}</div>`;
       }
       const cls=['question-stage',hasVisualMedia?'visual-question':'',hasVisualMedia?'media-layout-'+q.questionMediaLayout:'',hasChoices?'choice-question':''].filter(Boolean).join(' ');
       stage=`<section class="${cls}">${content}</section>`;
@@ -999,14 +1171,14 @@ async function renderQuestion(i){
       let inside='';
       if(answerVideo)inside+=`<div class="answer-media"><video src="${answerVideo}" controls playsinline preload="metadata"></video></div>`;
       else if(aImg)inside+=`<div class="answer-media"><img src="${aImg}" alt="정답 이미지"></div>`;
-      if(choiceText)inside+=`<div class="answer-choice-result"><span class="answer-choice-badge">${idx+1}</span><span class="answer-choice-text">${esc(choiceText)}</span></div>`;
+      if(choiceText)inside+=`<div class="answer-choice-result"><span class="answer-choice-badge">${idx+1}</span><span class="answer-choice-text">${displayText(choiceText)}</span></div>`;
       stage=`<section class="question-stage ${hasAnswerVisual?'visual-answer-stage answer-media-layout-'+q.answerMediaLayout:''}"><div class="answer-direct multiple-answer ${hasAnswerVisual?'visual-answer':''}">${inside}</div></section>`;
     }else{
       const hasAnswerVisual=!!(answerVideo||aImg);
       let inside='';
       if(answerVideo)inside+=`<div class="answer-media"><video src="${answerVideo}" controls playsinline preload="metadata"></video></div>`;
       else if(aImg)inside+=`<div class="answer-media"><img src="${aImg}" alt="정답 이미지"></div>`;
-      if(ans)inside+=`<div class="answer-text ${answerSize}">${esc(ans)}</div>`;
+      if(ans)inside+=`<div class="answer-text ${answerSize}">${displayText(ans)}</div>`;
       stage=`<section class="question-stage ${hasAnswerVisual?'visual-answer-stage answer-media-layout-'+q.answerMediaLayout:''}"><div class="answer-direct ${hasAnswerVisual?'visual-answer':''}">${inside}</div></section>`;
     }
   }
@@ -1100,7 +1272,7 @@ async function renderQuestion(i){
 
 function renderAdmin(){
   currentView='admin';const q=state.questions[adminIndex];const slots=state.questions.map((x,i)=>`<button class="${i===adminIndex?'is-selected ':''}${questionFilled(x)?'is-filled':''}" data-admin-num="${i}"><strong>${i+1}</strong></button>`).join('');
-  document.getElementById('app').innerHTML=`<div class="admin-shell">${commonTopbar()}<main class="admin-scroll-area"><section class="admin-panel"><header class="admin-header"><div><span class="kicker">ADMIN</span><h1>16문제 관리</h1><p>1번부터 16번까지 각 문제의 유형과 내용을 직접 설정합니다.</p></div><div class="admin-header-actions"><button class="admin-secondary-button" id="exportBtn">⇩ 내보내기</button><button class="admin-secondary-button" id="importBtn">☁ 불러오기</button><button class="admin-secondary-button" id="eventBtn">← 행사 화면</button></div></header><div class="admin-layout"><aside class="admin-nav"><div class="admin-nav-kicker">4×4 BOARD</div><div class="admin-nav-title">16문제</div><div class="admin-slot-label">문제 번호</div><div class="admin-slots">${slots}</div></aside><form class="admin-form" id="adminForm"><div class="admin-form-title">${adminIndex+1}번 문제</div><div class="admin-workspace"><div class="admin-editor"><div class="admin-form-grid"><label class="admin-field"><span>문제 유형</span><select id="qType">${Object.entries(TYPE_LABELS).map(([v,l])=>`<option value="${v}" ${q.type===v?'selected':''}>${l}</option>`).join('')}</select></label><label class="admin-field" id="answerTypeField"><span>답변 방식</span><select id="answerType"><option value="short" ${q.answerType==='short'?'selected':''}>단답형</option><option value="multiple" ${q.answerType==='multiple'?'selected':''}>4지선다</option></select></label></div><div id="hiddenOption"></div><label class="admin-field full"><span>문제</span><textarea id="qText">${esc(q.question)}</textarea></label><div id="choicesHost"></div><label class="admin-field full" id="answerTextField"><span>정답</span><textarea id="qAnswer" rows="5">${esc(q.answer)}</textarea></label><label class="admin-field full"><span>힌트 (선택)</span><input id="qHint" value="${esc(q.hint)}" placeholder="필요한 문제에만 입력하세요."></label><div class="media-grid">${mediaCard(q,'questionImage','문제 이미지','image/*')}${mediaCard(q,'answerImage','정답 이미지','image/*')}${mediaCard(q,'video','문제 동영상','video/*')}${mediaCard(q,'answerVideo','정답 동영상','video/*')}${mediaCard(q,'audio','문제 음성','audio/*')}${mediaCard(q,'answerAudio','정답 음성','audio/*')}</div><div class="media-layout-options"><span>문제 미디어 크기</span><label><input type="radio" name="questionMediaLayout" value="full" ${q.questionMediaLayout!=='compact'?'checked':''}> 크게</label><label><input type="radio" name="questionMediaLayout" value="compact" ${q.questionMediaLayout==='compact'?'checked':''}> 작게 · 글자 중심</label></div><div class="media-layout-options"><span>정답 미디어 크기</span><label><input type="radio" name="answerMediaLayout" value="full" ${q.answerMediaLayout!=='compact'?'checked':''}> 크게</label><label><input type="radio" name="answerMediaLayout" value="compact" ${q.answerMediaLayout==='compact'?'checked':''}> 작게 · 글자 중심</label></div><div class="audio-options"><span>문제 동영상 재생</span><label><input type="radio" name="videoPlayback" value="manual" ${q.videoPlayback!=='auto'?'checked':''}> 수동</label><label><input type="radio" name="videoPlayback" value="auto" ${q.videoPlayback==='auto'?'checked':''}> 자동재생</label></div><div class="audio-options"><span>정답 동영상 재생</span><label><input type="radio" name="answerVideoPlayback" value="manual" ${q.answerVideoPlayback!=='auto'?'checked':''}> 수동</label><label><input type="radio" name="answerVideoPlayback" value="auto" ${q.answerVideoPlayback==='auto'?'checked':''}> 자동재생</label></div><div class="audio-options"><span>문제 음성 재생</span><label><input type="radio" name="audioPlayback" value="manual" ${q.audioPlayback!=='auto'?'checked':''}> 수동</label><label><input type="radio" name="audioPlayback" value="auto" ${q.audioPlayback==='auto'?'checked':''}> 자동재생</label></div><div class="audio-options"><span>정답 음성 재생</span><label><input type="radio" name="answerAudioPlayback" value="manual" ${q.answerAudioPlayback!=='auto'?'checked':''}> 수동</label><label><input type="radio" name="answerAudioPlayback" value="auto" ${q.answerAudioPlayback==='auto'?'checked':''}> 자동재생</label></div><footer class="admin-form-footer"><div class="left-actions"><button type="button" class="clear-btn" id="clearQuestion">이 문제 초기화</button></div><span class="autosave-note" id="autosaveNote">변경 내용 자동 저장</span><button type="submit" class="save-btn">저장</button></footer></div><aside class="admin-preview"><div class="preview-head"><strong>실제 화면 미리보기</strong><div class="preview-tabs"><button type="button" class="preview-tab ${adminPreviewMode==='question'?'active':''}" data-preview-mode="question">문제</button><button type="button" class="preview-tab ${adminPreviewMode==='answer'?'active':''}" data-preview-mode="answer">정답</button></div></div><div class="preview-screen" id="previewScreen"></div></aside></div></form></div></section></main></div>`;
+  document.getElementById('app').innerHTML=`<div class="admin-shell">${commonTopbar()}<main class="admin-scroll-area"><section class="admin-panel"><header class="admin-header"><div><span class="kicker">ADMIN</span><h1>16문제 관리</h1><p>1번부터 16번까지 각 문제의 유형과 내용을 직접 설정합니다.</p></div><div class="admin-header-actions"><button class="admin-secondary-button" id="exportBtn">⇩ 내보내기</button><button class="admin-secondary-button" id="importBtn">☁ 불러오기</button><button class="admin-secondary-button" id="eventBtn">← 행사 화면</button></div></header><div class="admin-layout"><aside class="admin-nav"><div class="admin-nav-kicker">4×4 BOARD</div><div class="admin-nav-title">16문제</div><div class="admin-slot-label">문제 번호</div><div class="admin-slots">${slots}</div></aside><form class="admin-form" id="adminForm"><div class="admin-form-title">${adminIndex+1}번 문제</div><div class="admin-workspace"><div class="admin-editor"><div class="admin-form-grid"><label class="admin-field"><span>문제 유형</span><select id="qType">${Object.entries(TYPE_LABELS).map(([v,l])=>`<option value="${v}" ${q.type===v?'selected':''}>${l}</option>`).join('')}</select></label><label class="admin-field" id="answerTypeField"><span>답변 방식</span><select id="answerType"><option value="short" ${q.answerType==='short'?'selected':''}>단답형</option><option value="multiple" ${q.answerType==='multiple'?'selected':''}>4지선다</option></select></label></div><div id="hiddenOption"></div><label class="admin-field full"><span>문제</span><textarea id="qText">${esc(q.question)}</textarea></label><div id="choicesHost"></div><label class="admin-field full" id="answerTextField"><span>정답</span><textarea id="qAnswer" rows="5">${esc(q.answer)}</textarea></label><label class="admin-field full"><span>힌트 (선택)</span><input id="qHint" value="${displayText(q.hint)}" placeholder="필요한 문제에만 입력하세요."></label><div class="media-grid">${mediaCard(q,'questionImage','문제 이미지','image/*')}${mediaCard(q,'answerImage','정답 이미지','image/*')}${mediaCard(q,'video','문제 동영상','video/*')}${mediaCard(q,'answerVideo','정답 동영상','video/*')}${mediaCard(q,'audio','문제 음성','audio/*')}${mediaCard(q,'answerAudio','정답 음성','audio/*')}</div><div class="media-layout-options"><span>문제 미디어 크기</span><label><input type="radio" name="questionMediaLayout" value="full" ${q.questionMediaLayout!=='compact'?'checked':''}> 크게</label><label><input type="radio" name="questionMediaLayout" value="compact" ${q.questionMediaLayout==='compact'?'checked':''}> 작게 · 글자 중심</label></div><div class="media-layout-options"><span>정답 미디어 크기</span><label><input type="radio" name="answerMediaLayout" value="full" ${q.answerMediaLayout!=='compact'?'checked':''}> 크게</label><label><input type="radio" name="answerMediaLayout" value="compact" ${q.answerMediaLayout==='compact'?'checked':''}> 작게 · 글자 중심</label></div><div class="audio-options"><span>문제 동영상 재생</span><label><input type="radio" name="videoPlayback" value="manual" ${q.videoPlayback!=='auto'?'checked':''}> 수동</label><label><input type="radio" name="videoPlayback" value="auto" ${q.videoPlayback==='auto'?'checked':''}> 자동재생</label></div><div class="audio-options"><span>정답 동영상 재생</span><label><input type="radio" name="answerVideoPlayback" value="manual" ${q.answerVideoPlayback!=='auto'?'checked':''}> 수동</label><label><input type="radio" name="answerVideoPlayback" value="auto" ${q.answerVideoPlayback==='auto'?'checked':''}> 자동재생</label></div><div class="audio-options"><span>문제 음성 재생</span><label><input type="radio" name="audioPlayback" value="manual" ${q.audioPlayback!=='auto'?'checked':''}> 수동</label><label><input type="radio" name="audioPlayback" value="auto" ${q.audioPlayback==='auto'?'checked':''}> 자동재생</label></div><div class="audio-options"><span>정답 음성 재생</span><label><input type="radio" name="answerAudioPlayback" value="manual" ${q.answerAudioPlayback!=='auto'?'checked':''}> 수동</label><label><input type="radio" name="answerAudioPlayback" value="auto" ${q.answerAudioPlayback==='auto'?'checked':''}> 자동재생</label></div><footer class="admin-form-footer"><div class="left-actions"><button type="button" class="clear-btn" id="clearQuestion">이 문제 초기화</button></div><span class="autosave-note" id="autosaveNote">변경 내용 자동 저장</span><button type="submit" class="save-btn">저장</button></footer></div><aside class="admin-preview"><div class="preview-head"><strong>실제 화면 미리보기</strong><div class="preview-tabs"><button type="button" class="preview-tab ${adminPreviewMode==='question'?'active':''}" data-preview-mode="question">문제</button><button type="button" class="preview-tab ${adminPreviewMode==='answer'?'active':''}" data-preview-mode="answer">정답</button></div></div><div class="preview-screen" id="previewScreen"></div></aside></div></form></div></section></main></div>`;
   wireCommonTopbar();document.querySelectorAll('[data-admin-num]').forEach(b=>b.addEventListener('click',()=>{saveAdminForm(false);adminIndex=Number(b.dataset.adminNum);adminPreviewMode='question';renderAdmin()}));document.getElementById('eventBtn').addEventListener('click',()=>{saveAdminForm(false);currentView='home';render()});document.getElementById('exportBtn').addEventListener('click',()=>{saveAdminForm(false);exportPack()});document.getElementById('importBtn').addEventListener('click',chooseImport);document.getElementById('adminForm').addEventListener('submit',e=>{e.preventDefault();saveAdminForm(true)});document.getElementById('clearQuestion').addEventListener('click',clearAdminQuestion);document.getElementById('qType').addEventListener('change',handleQuestionTypeChange);document.getElementById('answerType')?.addEventListener('change',()=>{syncAdminDynamic();queueAutosave()});['qText','qAnswer','qHint'].forEach(id=>document.getElementById(id)?.addEventListener('input',queueAutosave));document.querySelectorAll('input[name="questionMediaLayout"],input[name="answerMediaLayout"],input[name="videoPlayback"],input[name="answerVideoPlayback"],input[name="audioPlayback"],input[name="answerAudioPlayback"]').forEach(x=>x.addEventListener('change',queueAutosave));document.querySelectorAll('[data-preview-mode]').forEach(b=>b.addEventListener('click',()=>{adminPreviewMode=b.dataset.previewMode;document.querySelectorAll('[data-preview-mode]').forEach(x=>x.classList.toggle('active',x.dataset.previewMode===adminPreviewMode));updatePreview()}));syncAdminDynamic();wireMediaCards();updatePreview();
 }
 
@@ -1180,21 +1352,21 @@ async function updatePreview(){
   else if(aImg)media=`<div class="preview-media"><img src="${aImg}" alt="정답"></div>`;
   let body='';
   if(adminPreviewMode==='question'){
-    if(q.hint)body+=`<div class="preview-hint">힌트 · ${esc(q.hint)}</div>`;
+    if(q.hint)body+=`<div class="preview-hint">힌트 · ${displayText(q.hint)}</div>`;
     if(media)body+=media;
-    if(q.type!=='hidden'||q.hiddenShowText)body+=`<div class="preview-text ${media?'with-image':''}">${esc(q.question||'')}</div>`;
+    if(q.type!=='hidden'||q.hiddenShowText)body+=`<div class="preview-text ${media?'with-image':''}">${displayText(q.question||'')}</div>`;
     if(q.type==='ox')body+=`<div class="preview-choice-grid"><div class="preview-choice"><span class="preview-choice-number">O</span><span>O</span></div><div class="preview-choice"><span class="preview-choice-number">X</span><span>X</span></div></div>`;
-    else if(q.answerType==='multiple')body+=`<div class="preview-choice-grid">${q.choices.map((c,i)=>`<div class="preview-choice"><span class="preview-choice-number">${i+1}</span><span>${esc(c||'')}</span></div>`).join('')}</div>`;
+    else if(q.answerType==='multiple')body+=`<div class="preview-choice-grid">${q.choices.map((c,i)=>`<div class="preview-choice"><span class="preview-choice-number">${i+1}</span><span>${displayText(c||'')}</span></div>`).join('')}</div>`;
   }else if(q.type==='ox'){
     body+=`<div class="preview-text">${esc(q.oxAnswer||'O')}</div>`;
   }else if(q.answerType==='multiple'){
     const idx=Math.max(0,Math.min(3,Number(q.correctChoice)||0));
     const txt=String(q.choices[idx]||q.answer||'').trim();
     if(media)body+=media;
-    body+=`<div class="preview-choice-answer"><span class="preview-answer-badge">${idx+1}</span><span class="preview-answer-choice-text">${esc(txt)}</span></div>`;
+    body+=`<div class="preview-choice-answer"><span class="preview-answer-badge">${idx+1}</span><span class="preview-answer-choice-text">${displayText(txt)}</span></div>`;
   }else{
     if(media)body+=media;
-    body+=`<div class="preview-text ${media?'with-image':''}">${esc(q.answer||'')}</div>`;
+    body+=`<div class="preview-text ${media?'with-image':''}">${displayText(q.answer||'')}</div>`;
   }
   host.innerHTML=`<div class="preview-top"><span>4×4 BOARD</span><span>${adminIndex+1}번</span></div><div class="preview-body">${body}</div><div class="preview-score">${adminIndex+1}번</div>`;
 }
