@@ -120,16 +120,18 @@ button,input,textarea,select{font:inherit}button{cursor:pointer}button:focus-vis
   overflow:hidden;
 }
 .question-stage.has-media{
-  display:grid;grid-template-rows:minmax(0,1fr) auto;gap:10px;
-  align-items:stretch;
+  display:flex;flex-direction:column;align-items:stretch;justify-content:center;gap:10px;
 }
 .question-stage.has-media.has-choices{
-  grid-template-rows:minmax(0,1fr) auto auto;
+  display:flex;flex-direction:column;align-items:stretch;justify-content:center;gap:10px;
 }
 .question-stage.hidden-stage{padding:2px}
 .question-stage .media-stage{
-  width:100%;height:100%;min-height:0;margin:0;
+  width:100%;height:auto;min-height:0;margin:0;
   display:flex;align-items:center;justify-content:center;overflow:hidden;
+}
+.question-stage.has-media .media-stage{
+  flex:1 1 auto;min-height:0;
 }
 .question-stage .media-stage img,
 .question-stage .media-stage video{
@@ -146,8 +148,9 @@ button,input,textarea,select{font:inherit}button{cursor:pointer}button:focus-vis
 .question-stage .question-text.medium{font-size:clamp(38px,4.4vw,72px)}
 .question-stage .question-text.long{font-size:clamp(28px,3.4vw,54px)}
 .question-stage.has-media .question-text{
-  max-height:24vh;padding:8px 18px;overflow:hidden;line-height:1.22;
+  flex:0 0 auto;max-height:none;padding:8px 18px;overflow:visible;line-height:1.22;
 }
+.question-stage.has-media .hint,.question-stage.has-media .choices,.question-stage.has-media .ox{flex:0 0 auto}
 .question-stage .hint{
   margin:0 auto 10px;max-width:940px;padding:8px 14px;
 }
@@ -178,7 +181,8 @@ button,input,textarea,select{font:inherit}button{cursor:pointer}button:focus-vis
   width:100%;height:100%;max-width:100%;max-height:100%;object-fit:contain;border-radius:10px;background:#050c15;
 }
 .answer-direct.ox-answer .ox-answer-symbol{
-  font-size:min(38vw,420px);line-height:.9;font-weight:950;
+  font-size:clamp(220px,42vmin,480px);line-height:.86;font-weight:950;
+  letter-spacing:-.06em;
 }
 .question-footer{display:flex;align-items:center;justify-content:center}
 .question-footer button{
@@ -208,6 +212,10 @@ button,input,textarea,select{font:inherit}button{cursor:pointer}button:focus-vis
 .reset-modal-actions .confirm{color:#07111d;border:0;background:var(--accent)}
 
 
+
+/* OX answer preview: only O/X answers use the oversized symbol treatment. */
+.preview-screen.is-ox-answer .preview-body{display:grid;place-items:center}
+.preview-screen.is-ox-answer .preview-text{font-size:clamp(74px,9vw,150px)!important;line-height:.9!important;font-weight:950!important}
 /* FINAL two additions: nearby board icon + BibleGoldenBell shortcut/install */
 .master-title-actions{display:flex;align-items:center;gap:9px}
 .master-install-button{
@@ -361,6 +369,65 @@ function undoClaim(){if(!progress.lastClaim)return;const {index,previous}=progre
 function findWinningLine(team){const lines=[];for(let r=0;r<4;r++)lines.push([r*4,r*4+1,r*4+2,r*4+3]);for(let c=0;c<4;c++)lines.push([c,c+4,c+8,c+12]);lines.push([0,5,10,15],[3,6,9,12]);return lines.find(line=>line.every(i=>progress.owners[i]===team))||null}
 function celebrate(team){const meta=TEAM_META[team]||TEAM_META[1],ov=document.createElement('div');ov.className='bingo-celebration';let conf='';for(let i=0;i<80;i++){const colors=[meta.color,'#fff','#ffcf70','#43d17a','#6ca8ff'];conf+=`<i class="confetti-piece" style="left:${(i*37)%100}%;background:${colors[i%colors.length]};animation-delay:${(i%12)*.04}s;transform:rotate(${i*43%180}deg)"></i>`}ov.innerHTML=conf+`<div class="bingo-card"><span>${meta.name}</span><strong>BINGO!</strong></div>`;document.body.appendChild(ov);setTimeout(()=>ov.remove(),3250)}
 
+// Media questions: keep the existing large type first, and shrink only when the real rendered content would clip.
+let mediaFitObserver=null;
+function stopMediaFitObserver(){try{mediaFitObserver?.disconnect()}catch{}mediaFitObserver=null}
+function fitMediaQuestionText(){
+  const stage=document.querySelector('.question-stage.has-media');
+  if(!stage||answerVisible)return;
+  const text=stage.querySelector('.question-text');
+  const media=stage.querySelector('.media-stage');
+  if(!text||!media)return;
+
+  // Always restart from the CSS-defined large size. Never carry a smaller size to the next question.
+  text.style.fontSize='';
+  media.style.minHeight='0px';
+  media.style.flexBasis='auto';
+
+  const stageH=stage.clientHeight;
+  if(stageH<180)return;
+
+  const hasChoices=!!stage.querySelector('.choices,.ox');
+  // Preserve meaningful media space, but give choices a little more room when necessary.
+  const mediaFloor=Math.max(120,Math.round(stageH*(hasChoices?0.28:0.38)));
+  media.style.minHeight=mediaFloor+'px';
+
+  const cssSize=parseFloat(getComputedStyle(text).fontSize)||48;
+  const minSize=Math.min(cssSize,26);
+  let size=cssSize;
+  text.style.fontSize=size+'px';
+
+  // Because the media has a floor, overflow now means the text/other content truly does not fit.
+  // Reduce only as much as needed, 2px at a time.
+  let guard=0;
+  while(stage.scrollHeight>stage.clientHeight+2 && size>minSize && guard<80){
+    size=Math.max(minSize,size-2);
+    text.style.fontSize=size+'px';
+    guard++;
+  }
+
+  // Extremely long text: sacrifice some media height before allowing any clipping.
+  if(stage.scrollHeight>stage.clientHeight+2){
+    let floor=mediaFloor;
+    while(stage.scrollHeight>stage.clientHeight+2 && floor>82 && guard<130){
+      floor-=8;
+      media.style.minHeight=floor+'px';
+      guard++;
+    }
+  }
+}
+function scheduleMediaQuestionFit(){
+  stopMediaFitObserver();
+  const stage=document.querySelector('.question-stage.has-media');
+  if(!stage||answerVisible)return;
+  let raf=0;
+  const run=()=>{cancelAnimationFrame(raf);raf=requestAnimationFrame(()=>requestAnimationFrame(fitMediaQuestionText))};
+  run();
+  stage.querySelectorAll('img').forEach(el=>{if(!el.complete)el.addEventListener('load',run,{once:true})});
+  stage.querySelectorAll('video').forEach(el=>el.addEventListener('loadedmetadata',run,{once:true}));
+  if('ResizeObserver' in window){mediaFitObserver=new ResizeObserver(run);mediaFitObserver.observe(stage)}
+}
+
 async function renderQuestion(i){
   const q=state.questions[i]||emptyQuestion(i+1);
   const qImg=await mediaUrl(q.media.questionImage);
@@ -437,6 +504,7 @@ async function renderQuestion(i){
     if(wanted&&!document.fullscreenElement){try{await enterFullscreen()}catch{}}
   });
   if(!answerVisible&&audio&&q.audioPlayback==='auto')setTimeout(()=>document.getElementById('qAudio')?.play().catch(()=>{}),80);
+  if(!answerVisible&&document.querySelector('.question-stage.has-media'))scheduleMediaQuestionFit();else stopMediaFitObserver();
 }
 
 function renderAdmin(){
@@ -465,7 +533,7 @@ async function optimizeImageFile(file){
 async function handleMediaFile(kind,file){const q=state.questions[adminIndex],key=qKey(q.number,kind);const stored=(kind==='questionImage'||kind==='answerImage')?await optimizeImageFile(file):file;await dbPut(key,stored);revokeMedia(key);q.media[kind]=key;q.mediaNames[kind]=file.name;saveState();toast(`${file.name} 저장됨`);renderAdmin()}
 async function removeMedia(kind){const q=state.questions[adminIndex],key=q.media[kind];if(key&&!/^data:|^https?:|^\//.test(key)){try{await dbDelete(key)}catch{}revokeMedia(key)}q.media[kind]=null;delete q.mediaNames[kind];saveState();renderAdmin()}
 async function refreshMediaPreviews(){const q=state.questions[adminIndex];for(const kind of ['questionImage','answerImage','video','audio']){const host=document.querySelector(`[data-preview-kind="${kind}"]`);if(!host)continue;const url=await mediaUrl(q.media[kind]);if(!url)continue;if(kind==='questionImage'||kind==='answerImage')host.innerHTML=`<img src="${url}" alt="${kind}">`;else if(kind==='video')host.innerHTML=`<video src="${url}" muted preload="metadata"></video>`;else host.innerHTML=`<div><div class="bigicon">♬</div><b>오디오 등록됨</b><small>${esc(q.mediaNames[kind]||'오디오 파일')}</small></div>`}}
-async function updatePreview(){const host=document.getElementById('previewScreen');if(!host)return;const base=state.questions[adminIndex],q=normalizeQuestion(JSON.parse(JSON.stringify(base)),adminIndex+1);readAdminForm(q);const qImg=await mediaUrl(base.media.questionImage),aImg=await mediaUrl(base.media.answerImage),video=await mediaUrl(base.media.video);let media=null;if(adminPreviewMode==='question'){if(q.type==='video'&&video)media=`<div class="preview-media"><video src="${video}" muted></video></div>`;else if(['image','person','hidden'].includes(q.type)&&qImg)media=`<div class="preview-media"><img src="${qImg}" alt="문제"></div>`}else if(aImg)media=`<div class="preview-media"><img src="${aImg}" alt="정답"></div>`;let txt=adminPreviewMode==='question'?q.question:(q.type==='ox'?q.oxAnswer:(q.answer||((q.answerType==='multiple')?q.choices[q.correctChoice]:'')));let body='';if(adminPreviewMode==='question'&&q.hint)body+=`<div class="preview-hint">힌트 · ${esc(q.hint)}</div>`;if(media)body+=media;if((q.type!=='hidden'||q.hiddenShowText||adminPreviewMode==='answer'))body+=`<div class="preview-text ${media?'with-image':''}">${esc(txt||'')}</div>`;if(adminPreviewMode==='question'&&q.type==='ox')body+=`<div class="preview-choice-grid"><div class="preview-choice"><span class="preview-choice-number">O</span><span>O</span></div><div class="preview-choice"><span class="preview-choice-number">X</span><span>X</span></div></div>`;else if(adminPreviewMode==='question'&&q.answerType==='multiple'&&q.type!=='ox')body+=`<div class="preview-choice-grid">${q.choices.map((c,i)=>`<div class="preview-choice"><span class="preview-choice-number">${i+1}</span><span>${esc(c||'')}</span></div>`).join('')}</div>`;host.innerHTML=`<div class="preview-top"><span>4×4 BOARD</span><span>${adminIndex+1}번</span></div><div class="preview-body">${body}</div><div class="preview-score">${adminIndex+1}번</div>`}
+async function updatePreview(){const host=document.getElementById('previewScreen');if(!host)return;const base=state.questions[adminIndex],q=normalizeQuestion(JSON.parse(JSON.stringify(base)),adminIndex+1);readAdminForm(q);host.classList.toggle('is-ox-answer',adminPreviewMode==='answer'&&q.type==='ox');const qImg=await mediaUrl(base.media.questionImage),aImg=await mediaUrl(base.media.answerImage),video=await mediaUrl(base.media.video);let media=null;if(adminPreviewMode==='question'){if(q.type==='video'&&video)media=`<div class="preview-media"><video src="${video}" muted></video></div>`;else if(['image','person','hidden'].includes(q.type)&&qImg)media=`<div class="preview-media"><img src="${qImg}" alt="문제"></div>`}else if(aImg)media=`<div class="preview-media"><img src="${aImg}" alt="정답"></div>`;let txt=adminPreviewMode==='question'?q.question:(q.type==='ox'?q.oxAnswer:(q.answer||((q.answerType==='multiple')?q.choices[q.correctChoice]:'')));let body='';if(adminPreviewMode==='question'&&q.hint)body+=`<div class="preview-hint">힌트 · ${esc(q.hint)}</div>`;if(media)body+=media;if((q.type!=='hidden'||q.hiddenShowText||adminPreviewMode==='answer'))body+=`<div class="preview-text ${media?'with-image':''}">${esc(txt||'')}</div>`;if(adminPreviewMode==='question'&&q.type==='ox')body+=`<div class="preview-choice-grid"><div class="preview-choice"><span class="preview-choice-number">O</span><span>O</span></div><div class="preview-choice"><span class="preview-choice-number">X</span><span>X</span></div></div>`;else if(adminPreviewMode==='question'&&q.answerType==='multiple'&&q.type!=='ox')body+=`<div class="preview-choice-grid">${q.choices.map((c,i)=>`<div class="preview-choice"><span class="preview-choice-number">${i+1}</span><span>${esc(c||'')}</span></div>`).join('')}</div>`;host.innerHTML=`<div class="preview-top"><span>4×4 BOARD</span><span>${adminIndex+1}번</span></div><div class="preview-body">${body}</div><div class="preview-score">${adminIndex+1}번</div>`}
 
 async function exportPack(){try{toast('데이터팩을 만드는 중입니다…');saveAdminForm(false);const keys=await dbKeys(),blobs=[],media=[];let offset=0;for(const key of keys){const blob=await dbGet(key);if(!blob)continue;media.push({key:String(key),type:blob.type||'application/octet-stream',size:blob.size,offset});blobs.push(blob);offset+=blob.size}const manifest={app:APP,format:4,createdAt:new Date().toISOString(),state,media};const enc=new TextEncoder(),magic=enc.encode(PACK_MAGIC),header=enc.encode(JSON.stringify(manifest)),len=new Uint8Array(4);new DataView(len.buffer).setUint32(0,header.byteLength,true);const pack=new Blob([magic,len,header,...blobs],{type:'application/octet-stream'}),a=document.createElement('a');a.href=URL.createObjectURL(pack);a.download=`BibleGoldenBell_4X4_${dateStamp()}.bb4`;document.body.appendChild(a);a.click();const u=a.href;a.remove();setTimeout(()=>URL.revokeObjectURL(u),2000);toast('데이터팩 저장 완료')}catch(e){console.error(e);alert('데이터 저장 중 오류: '+e.message)}}
 function chooseImport(){const inp=document.getElementById('importFile');inp.value='';inp.click()}
