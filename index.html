@@ -276,10 +276,100 @@ button,input,textarea,select{font:inherit}button{cursor:pointer}button:focus-vis
 .preview-answer-badge{width:32px;height:32px;flex:0 0 32px;display:grid;place-items:center;border-radius:6px;color:#07111d;background:#ff9a00;font-size:14px;font-weight:950}
 .preview-answer-choice-text{color:#fff;font-size:clamp(18px,2vw,28px);line-height:1.08;font-weight:950}
 
+
+/* === FINAL LAST PATCH 2026-08-22: narration + answer visual priority === */
+
+/* Narration never consumes question/answer stage space.
+   Manual narration is exposed only as a small footer button. */
+.question-footer .narration-button{
+  min-width:132px;
+  color:var(--text);
+  border:1px solid #24476c;
+  background:#081827;
+}
+.question-footer .narration-button:hover{
+  color:var(--accent);
+  border-color:var(--accent);
+  background:#081827;
+}
+
+/* When an answer image exists, the image is the primary visual.
+   JS gives this box an exact aspect-ratio-preserving size. */
+.question-stage.visual-answer-stage{padding:6px 24px}
+.answer-direct.visual-answer{gap:10px}
+.answer-direct.visual-answer .answer-media{
+  flex:0 0 auto;
+  width:auto;
+  height:auto;
+  min-width:0;
+  min-height:0;
+  margin:0 auto;
+}
+.answer-direct.visual-answer .answer-media img{
+  display:block;
+  width:100%;
+  height:100%;
+  max-width:100%;
+  max-height:100%;
+  object-fit:contain;
+  object-position:center center;
+}
+.answer-direct.visual-answer .answer-text{
+  flex:0 0 auto;
+  max-width:1240px;
+  font-size:54px;
+  line-height:1.12;
+}
+.answer-direct.visual-answer .answer-text.medium{font-size:46px}
+.answer-direct.visual-answer .answer-text.long{font-size:38px}
+
+/* Multiple-choice answer with an answer image:
+   keep the same orange number badge but compact it so the image remains large. */
+.answer-direct.multiple-answer.visual-answer .answer-choice-result{
+  flex:0 0 auto;
+  width:min(980px,92%);
+  min-height:78px;
+  padding:11px 20px;
+  gap:14px;
+}
+.answer-direct.multiple-answer.visual-answer .answer-choice-badge{
+  width:52px;
+  height:52px;
+  flex-basis:52px;
+  font-size:28px;
+}
+.answer-direct.multiple-answer.visual-answer .answer-choice-text{
+  font-size:clamp(30px,3.4vw,52px);
+}
+
+/* Tiny admin-only remove control is available for every stored media item.
+   This is necessary because media is intentionally preserved when type changes. */
+.media-remove-icon{
+  position:absolute;
+  top:7px;
+  right:7px;
+  z-index:2;
+  width:28px;
+  height:28px;
+  min-width:28px;
+  padding:0;
+  display:grid;
+  place-items:center;
+  border:1px solid rgba(255,255,255,.5);
+  border-radius:999px;
+  background:rgba(7,17,31,.78);
+  color:#fff;
+  font-size:14px;
+  line-height:1;
+}
+.media-remove-icon:hover{background:#d84a4a;border-color:#d84a4a}
+.media-drop{position:relative}
+
 </style>
 <!-- FINAL-media-cleanup-2026-08-22 -->
 <!-- FINAL-adaptive-question-size-v2-2026-08-22 -->
 <!-- FINAL-UNIFIED-QUESTION-LAYOUT-2026-08-22 -->
+<!-- BibleGoldenBell_4X4 FINAL LAST 2026-08-22 -->
 </head>
 <body>
 <div id="app"></div>
@@ -301,7 +391,7 @@ const TEAM_META={1:{name:'1팀',color:'#f4a11a'},2:{name:'2팀',color:'#4e9be8'}
 let adminIndex=0,adminPreviewMode='question',answerVisible=false,currentView='home',currentQuestion=0,autosaveTimer=null;
 const mediaUrlCache=new Map();
 
-function emptyQuestion(n){return {number:n,type:'general',answerType:'short',question:'',answer:'',hint:'',choices:['','','',''],correctChoice:0,oxAnswer:'O',hiddenShowText:false,audioPlayback:'manual',media:{questionImage:null,answerImage:null,video:null,audio:null},mediaNames:{}}}
+function emptyQuestion(n){return {number:n,type:'general',answerType:'short',question:'',answer:'',hint:'',choices:['','','',''],correctChoice:0,oxAnswer:'O',hiddenShowText:false,audioPlayback:'manual',answerAudioPlayback:'manual',media:{questionImage:null,answerImage:null,video:null,audio:null,answerAudio:null},mediaNames:{}}}
 function defaultState(){return {version:4,questions:Array.from({length:16},(_,i)=>emptyQuestion(i+1)),settings:{mode:'3'}}}
 function defaultProgress(){return {owners:Array(16).fill(0),visited:Array(16).fill(false),lastQuestion:null,winning:[],lastClaim:null}}
 function normalizeQuestion(raw,n){
@@ -316,7 +406,7 @@ function normalizeQuestion(raw,n){
   if(q.questionImageUrl&&!media.questionImage)media.questionImage=q.questionImageUrl;
   if(q.answerImageUrl&&!media.answerImage)media.answerImage=q.answerImageUrl;
   if(q.mediaUrl&&!media.video&&type==='video')media.video=q.mediaUrl;
-  return {...b,...q,number:n,type,answerType,choices:Array.isArray(q.choices)?[...q.choices,...Array(4).fill('')].slice(0,4):b.choices,correctChoice:Number.isInteger(q.correctChoice)?q.correctChoice:0,oxAnswer:q.oxAnswer||((String(q.answer||'').includes('X'))?'X':'O'),hiddenShowText:!!q.hiddenShowText,audioPlayback:q.audioPlayback||(q.audioAuto?'auto':'manual'),media,mediaNames:{...b.mediaNames,...(q.mediaNames||{})}};
+  return {...b,...q,number:n,type,answerType,choices:Array.isArray(q.choices)?[...q.choices,...Array(4).fill('')].slice(0,4):b.choices,correctChoice:Number.isInteger(q.correctChoice)?q.correctChoice:0,oxAnswer:q.oxAnswer||((String(q.answer||'').includes('X'))?'X':'O'),hiddenShowText:!!q.hiddenShowText,audioPlayback:q.audioPlayback||(q.audioAuto?'auto':'manual'),answerAudioPlayback:q.answerAudioPlayback||(q.answerAudioAuto?'auto':'manual'),media,mediaNames:{...b.mediaNames,...(q.mediaNames||{})}};
 }
 function normalizeState(raw){const d=defaultState(),s=raw&&typeof raw==='object'?raw:{};d.questions=Array.from({length:16},(_,i)=>normalizeQuestion((s.questions||[])[i],i+1));const mode=String(s.settings?.mode||s.settings?.gameMode||'3');d.settings.mode=['individual','2','3'].includes(mode)?mode:'3';return d}
 function loadState(){try{const r=localStorage.getItem(LS_KEY);return r?normalizeState(JSON.parse(r)):defaultState()}catch{return defaultState()}}
@@ -519,10 +609,77 @@ function fitVisualQuestion(stage){
     }
   }
 }
+
+function fitVisualAnswer(stage){
+  const direct=stage.querySelector('.answer-direct.visual-answer');
+  const mediaStage=direct?.querySelector('.answer-media');
+  const img=mediaStage?.querySelector('img');
+  if(!direct||!mediaStage||!img)return;
+  const natural=naturalMediaSize(img);
+  if(!natural)return;
+
+  const {w:innerW,h:innerH}=innerSize(stage);
+  const gap=px(getComputedStyle(direct).rowGap||getComputedStyle(direct).gap||10);
+  const textEl=direct.querySelector('.answer-text');
+  const choiceResult=direct.querySelector('.answer-choice-result');
+
+  let textH=0;
+  if(textEl){
+    const len=(textEl.textContent||'').trim().length;
+    const maxFont=len>90?42:len>50?48:56;
+    const minFont=len>90?24:28;
+    textEl.style.fontSize=maxFont+'px';
+    textEl.style.lineHeight='1.12';
+    textH=textEl.scrollHeight;
+    const maxTextH=Math.max(textH,Math.min(innerH*.25,190));
+    fitTextWithin(textEl,maxFont,minFont,maxTextH,1.12);
+    textH=textEl.scrollHeight;
+  }else if(choiceResult){
+    textH=choiceResult.getBoundingClientRect().height;
+  }
+
+  const availableForMedia=Math.max(120,innerH-textH-(textH?gap:0));
+  const aspect=natural.w/natural.h;
+  let mediaW=Math.min(innerW,availableForMedia*aspect);
+  let mediaH=mediaW/aspect;
+  if(mediaH>availableForMedia){mediaH=availableForMedia;mediaW=mediaH*aspect}
+
+  mediaStage.style.width=Math.max(1,Math.floor(mediaW))+'px';
+  mediaStage.style.height=Math.max(1,Math.floor(mediaH))+'px';
+  mediaStage.style.flex='0 0 '+Math.max(1,Math.floor(mediaH))+'px';
+
+  // If the whole answer still overflows, shrink text first, then media as the final fallback.
+  let guard=0;
+  if(textEl){
+    let size=parseFloat(getComputedStyle(textEl).fontSize)||40;
+    while(stage.scrollHeight>stage.clientHeight+1&&size>22&&guard<90){
+      size=Math.max(22,size-2);
+      textEl.style.fontSize=size+'px';
+      guard++;
+    }
+  }
+  while(stage.scrollHeight>stage.clientHeight+1&&mediaH>100&&guard<150){
+    mediaH-=8;
+    mediaW=Math.min(innerW,mediaH*aspect);
+    mediaH=mediaW/aspect;
+    mediaStage.style.width=Math.max(1,Math.floor(mediaW))+'px';
+    mediaStage.style.height=Math.max(1,Math.floor(mediaH))+'px';
+    mediaStage.style.flex='0 0 '+Math.max(1,Math.floor(mediaH))+'px';
+    guard++;
+  }
+}
+
 function fitQuestionLayout(){
-  if(answerVisible)return;
   const stage=document.querySelector('.question-stage');
   if(!stage)return;
+  if(answerVisible){
+    const answerMedia=stage.querySelector('.answer-media');
+    if(answerMedia){answerMedia.style.width='';answerMedia.style.height='';answerMedia.style.flex=''}
+    const answerText=stage.querySelector('.answer-text');
+    if(answerText){answerText.style.fontSize='';answerText.style.lineHeight=''}
+    if(stage.classList.contains('visual-answer-stage'))fitVisualAnswer(stage);
+    return;
+  }
   // Clear only inline sizing created by this engine before recalculation.
   const textEl=stage.querySelector('.question-text');
   if(textEl){textEl.style.fontSize='';textEl.style.lineHeight=''}
@@ -534,7 +691,6 @@ function fitQuestionLayout(){
 }
 function scheduleQuestionLayout(){
   stopQuestionLayoutObserver();
-  if(answerVisible)return;
   const stage=document.querySelector('.question-stage');
   if(!stage)return;
   let raf=0;
@@ -554,14 +710,17 @@ async function renderQuestion(i){
   const aImg=await mediaUrl(q.media.answerImage);
   const video=await mediaUrl(q.media.video);
   const audio=await mediaUrl(q.media.audio);
+  const answerAudio=await mediaUrl(q.media.answerAudio);
 
   let stage='';
   if(!answerVisible){
     const qt=(q.question||'').trim();
     const isHidden=q.type==='hidden';
-    const hasImage=['image','person'].includes(q.type)&&!!qImg;
-    const hasVideo=q.type==='video'&&!!video;
-    const hasVisualMedia=hasImage||hasVideo||(isHidden&&!!qImg);
+    // Media presence is authoritative. This restores legacy/person/image questions whose
+    // stored type may be general while preserving video priority for explicit video questions.
+    const useVideo=!!video&&(q.type==='video'||!qImg);
+    const useImage=!!qImg&&!useVideo;
+    const hasVisualMedia=useImage||useVideo;
     const hasChoices=q.type==='ox'||(q.answerType==='multiple'&&q.type!=='ox');
 
     if(isHidden){
@@ -572,9 +731,8 @@ async function renderQuestion(i){
     }else{
       let content='';
       if(q.hint)content+=`<div class="hint">힌트 · ${esc(q.hint)}</div>`;
-      if(hasVideo)content+=`<div class="media-stage"><video src="${video}" controls playsinline preload="metadata"></video></div>`;
-      else if(hasImage)content+=`<div class="media-stage"><img src="${qImg}" alt="문제 이미지"></div>`;
-      else if(audio)content+=`<div class="media-stage audio-only"><div class="audio-card"><audio id="qAudio" src="${audio}" controls></audio></div></div>`;
+      if(useVideo)content+=`<div class="media-stage"><video src="${video}" controls playsinline preload="metadata"></video></div>`;
+      else if(useImage)content+=`<div class="media-stage"><img src="${qImg}" alt="문제 이미지"></div>`;
       if(qt)content+=`<div class="question-text">${esc(qt)}</div>`;
       if(q.type==='ox'){
         content+=`<div class="ox"><div class="o">O</div><div class="x">X</div></div>`;
@@ -582,7 +740,7 @@ async function renderQuestion(i){
         const filledChoices=(q.choices||[]).map((c,n)=>({c:String(c||'').trim(),n})).filter(x=>x.c);
         if(filledChoices.length)content+=`<div class="choices">${filledChoices.map(x=>`<div class="choice"><span class="n">${x.n+1}</span><span>${esc(x.c)}</span></div>`).join('')}</div>`;
       }
-      const cls=['question-stage',hasVisualMedia?'visual-question':'',hasChoices?'choice-question':'',audio&&!hasVisualMedia?'audio-question':''].filter(Boolean).join(' ');
+      const cls=['question-stage',hasVisualMedia?'visual-question':'',hasChoices?'choice-question':''].filter(Boolean).join(' ');
       stage=`<section class="${cls}">${content}</section>`;
     }
   }else{
@@ -598,12 +756,12 @@ async function renderQuestion(i){
       let inside='';
       if(aImg)inside+=`<div class="answer-media"><img src="${aImg}" alt="정답 이미지"></div>`;
       if(choiceText)inside+=`<div class="answer-choice-result"><span class="answer-choice-badge">${idx+1}</span><span class="answer-choice-text">${esc(choiceText)}</span></div>`;
-      stage=`<section class="question-stage"><div class="answer-direct multiple-answer">${inside}</div></section>`;
+      stage=`<section class="question-stage ${aImg?'visual-answer-stage':''}"><div class="answer-direct multiple-answer ${aImg?'visual-answer':''}">${inside}</div></section>`;
     }else{
       let inside='';
       if(aImg)inside+=`<div class="answer-media"><img src="${aImg}" alt="정답 이미지"></div>`;
       if(ans)inside+=`<div class="answer-text ${answerSize}">${esc(ans)}</div>`;
-      stage=`<section class="question-stage"><div class="answer-direct">${inside}</div></section>`;
+      stage=`<section class="question-stage ${aImg?'visual-answer-stage':''}"><div class="answer-direct ${aImg?'visual-answer':''}">${inside}</div></section>`;
     }
   }
 
@@ -613,7 +771,8 @@ async function renderQuestion(i){
       <span>${answerVisible?(q.type==='ox'?'OX 정답':'정답'):(q.type==='ox'?'OX 문제':'문제')}</span>
     </header>
     ${stage}
-    <footer class="question-footer">${answerVisible?`<button class="board-quick-button" id="quickBoardBtn" title="문제판으로" aria-label="문제판으로">${boardGridSvg()}</button>`:''}<button id="answerBtn">${answerVisible?'문제 다시 보기':'정답 보기'}</button></footer>
+    ${((answerVisible?answerAudio:audio))?`<audio id="activeNarration" src="${answerVisible?answerAudio:audio}" preload="auto" hidden></audio>`:''}
+    <footer class="question-footer">${answerVisible?`<button class="board-quick-button" id="quickBoardBtn" title="문제판으로" aria-label="문제판으로">${boardGridSvg()}</button>`:''}${((answerVisible?answerAudio:audio)&&((answerVisible?q.answerAudioPlayback:q.audioPlayback)!=='auto'))?`<button class="narration-button" id="narrationBtn">음성 재생</button>`:''}<button id="answerBtn">${answerVisible?'문제 다시 보기':'정답 보기'}</button></footer>
   </main></div>`;
 
   document.getElementById('boardBtn').addEventListener('click',async()=>{
@@ -631,14 +790,30 @@ async function renderQuestion(i){
     stopQuestionLayoutObserver();answerVisible=!answerVisible;await renderQuestion(i);
     if(wanted&&!document.fullscreenElement){try{await enterFullscreen()}catch{}}
   });
-  if(!answerVisible&&audio&&q.audioPlayback==='auto')setTimeout(()=>document.getElementById('qAudio')?.play().catch(()=>{}),80);
-  if(!answerVisible)scheduleQuestionLayout();else stopQuestionLayoutObserver();
+  const activeNarration=answerVisible?answerAudio:audio;
+  const activeNarrationMode=answerVisible?q.answerAudioPlayback:q.audioPlayback;
+  const narration=document.getElementById('activeNarration');
+  const narrationBtn=document.getElementById('narrationBtn');
+  if(narrationBtn&&narration){
+    narrationBtn.addEventListener('click',()=>{
+      if(narration.paused){
+        narration.play().then(()=>{narrationBtn.textContent='음성 일시정지'}).catch(()=>{});
+      }else{
+        narration.pause();narrationBtn.textContent='음성 재생';
+      }
+    });
+    narration.addEventListener('ended',()=>{narrationBtn.textContent='음성 재생'});
+  }
+  if(activeNarration&&activeNarrationMode==='auto'){
+    setTimeout(()=>narration?.play().catch(()=>{}),80);
+  }
+  scheduleQuestionLayout();
 }
 
 function renderAdmin(){
   currentView='admin';const q=state.questions[adminIndex];const slots=state.questions.map((x,i)=>`<button class="${i===adminIndex?'is-selected ':''}${questionFilled(x)?'is-filled':''}" data-admin-num="${i}"><strong>${i+1}</strong></button>`).join('');
-  document.getElementById('app').innerHTML=`<div class="admin-shell">${commonTopbar()}<main class="admin-scroll-area"><section class="admin-panel"><header class="admin-header"><div><span class="kicker">ADMIN</span><h1>16문제 관리</h1><p>1번부터 16번까지 각 문제의 유형과 내용을 직접 설정합니다.</p></div><div class="admin-header-actions"><button class="admin-secondary-button" id="exportBtn">⇩ 내보내기</button><button class="admin-secondary-button" id="importBtn">☁ 불러오기</button><button class="admin-secondary-button" id="eventBtn">← 행사 화면</button></div></header><div class="admin-layout"><aside class="admin-nav"><div class="admin-nav-kicker">4×4 BOARD</div><div class="admin-nav-title">16문제</div><div class="admin-slot-label">문제 번호</div><div class="admin-slots">${slots}</div></aside><form class="admin-form" id="adminForm"><div class="admin-form-title">${adminIndex+1}번 문제</div><div class="admin-workspace"><div class="admin-editor"><div class="admin-form-grid"><label class="admin-field"><span>문제 유형</span><select id="qType">${Object.entries(TYPE_LABELS).map(([v,l])=>`<option value="${v}" ${q.type===v?'selected':''}>${l}</option>`).join('')}</select></label><label class="admin-field" id="answerTypeField"><span>답변 방식</span><select id="answerType"><option value="short" ${q.answerType==='short'?'selected':''}>단답형</option><option value="multiple" ${q.answerType==='multiple'?'selected':''}>4지선다</option></select></label></div><div id="hiddenOption"></div><label class="admin-field full"><span>문제</span><textarea id="qText">${esc(q.question)}</textarea></label><div id="choicesHost"></div><label class="admin-field full"><span>정답</span><input id="qAnswer" value="${esc(q.answer)}"></label><label class="admin-field full"><span>힌트 (선택)</span><input id="qHint" value="${esc(q.hint)}" placeholder="필요한 문제에만 입력하세요."></label><div class="media-grid">${mediaCard(q,'questionImage','문제 이미지','image/*')}${mediaCard(q,'answerImage','정답 이미지','image/*')}${mediaCard(q,'video','동영상','video/*')}${mediaCard(q,'audio','오디오','audio/*')}</div><div class="audio-options"><span>오디오 재생</span><label><input type="radio" name="audioPlayback" value="manual" ${q.audioPlayback!=='auto'?'checked':''}> 수동</label><label><input type="radio" name="audioPlayback" value="auto" ${q.audioPlayback==='auto'?'checked':''}> 자동재생</label></div><footer class="admin-form-footer"><div class="left-actions"><button type="button" class="clear-btn" id="clearQuestion">이 문제 초기화</button></div><span class="autosave-note" id="autosaveNote">변경 내용 자동 저장</span><button type="submit" class="save-btn">저장</button></footer></div><aside class="admin-preview"><div class="preview-head"><strong>실제 화면 미리보기</strong><div class="preview-tabs"><button type="button" class="preview-tab ${adminPreviewMode==='question'?'active':''}" data-preview-mode="question">문제</button><button type="button" class="preview-tab ${adminPreviewMode==='answer'?'active':''}" data-preview-mode="answer">정답</button></div></div><div class="preview-screen" id="previewScreen"></div></aside></div></form></div></section></main></div>`;
-  wireCommonTopbar();document.querySelectorAll('[data-admin-num]').forEach(b=>b.addEventListener('click',()=>{saveAdminForm(false);adminIndex=Number(b.dataset.adminNum);adminPreviewMode='question';renderAdmin()}));document.getElementById('eventBtn').addEventListener('click',()=>{saveAdminForm(false);currentView='home';render()});document.getElementById('exportBtn').addEventListener('click',()=>{saveAdminForm(false);exportPack()});document.getElementById('importBtn').addEventListener('click',chooseImport);document.getElementById('adminForm').addEventListener('submit',e=>{e.preventDefault();saveAdminForm(true)});document.getElementById('clearQuestion').addEventListener('click',clearAdminQuestion);document.getElementById('qType').addEventListener('change',handleQuestionTypeChange);document.getElementById('answerType')?.addEventListener('change',()=>{syncAdminDynamic();queueAutosave()});['qText','qAnswer','qHint'].forEach(id=>document.getElementById(id)?.addEventListener('input',queueAutosave));document.querySelectorAll('input[name="audioPlayback"]').forEach(x=>x.addEventListener('change',queueAutosave));document.querySelectorAll('[data-preview-mode]').forEach(b=>b.addEventListener('click',()=>{adminPreviewMode=b.dataset.previewMode;document.querySelectorAll('[data-preview-mode]').forEach(x=>x.classList.toggle('active',x.dataset.previewMode===adminPreviewMode));updatePreview()}));syncAdminDynamic();wireMediaCards();updatePreview();
+  document.getElementById('app').innerHTML=`<div class="admin-shell">${commonTopbar()}<main class="admin-scroll-area"><section class="admin-panel"><header class="admin-header"><div><span class="kicker">ADMIN</span><h1>16문제 관리</h1><p>1번부터 16번까지 각 문제의 유형과 내용을 직접 설정합니다.</p></div><div class="admin-header-actions"><button class="admin-secondary-button" id="exportBtn">⇩ 내보내기</button><button class="admin-secondary-button" id="importBtn">☁ 불러오기</button><button class="admin-secondary-button" id="eventBtn">← 행사 화면</button></div></header><div class="admin-layout"><aside class="admin-nav"><div class="admin-nav-kicker">4×4 BOARD</div><div class="admin-nav-title">16문제</div><div class="admin-slot-label">문제 번호</div><div class="admin-slots">${slots}</div></aside><form class="admin-form" id="adminForm"><div class="admin-form-title">${adminIndex+1}번 문제</div><div class="admin-workspace"><div class="admin-editor"><div class="admin-form-grid"><label class="admin-field"><span>문제 유형</span><select id="qType">${Object.entries(TYPE_LABELS).map(([v,l])=>`<option value="${v}" ${q.type===v?'selected':''}>${l}</option>`).join('')}</select></label><label class="admin-field" id="answerTypeField"><span>답변 방식</span><select id="answerType"><option value="short" ${q.answerType==='short'?'selected':''}>단답형</option><option value="multiple" ${q.answerType==='multiple'?'selected':''}>4지선다</option></select></label></div><div id="hiddenOption"></div><label class="admin-field full"><span>문제</span><textarea id="qText">${esc(q.question)}</textarea></label><div id="choicesHost"></div><label class="admin-field full"><span>정답</span><input id="qAnswer" value="${esc(q.answer)}"></label><label class="admin-field full"><span>힌트 (선택)</span><input id="qHint" value="${esc(q.hint)}" placeholder="필요한 문제에만 입력하세요."></label><div class="media-grid">${mediaCard(q,'questionImage','문제 이미지','image/*')}${mediaCard(q,'answerImage','정답 이미지','image/*')}${mediaCard(q,'video','동영상','video/*')}${mediaCard(q,'audio','문제 음성','audio/*')}${mediaCard(q,'answerAudio','정답 음성','audio/*')}</div><div class="audio-options"><span>문제 음성 재생</span><label><input type="radio" name="audioPlayback" value="manual" ${q.audioPlayback!=='auto'?'checked':''}> 수동</label><label><input type="radio" name="audioPlayback" value="auto" ${q.audioPlayback==='auto'?'checked':''}> 자동재생</label></div><div class="audio-options"><span>정답 음성 재생</span><label><input type="radio" name="answerAudioPlayback" value="manual" ${q.answerAudioPlayback!=='auto'?'checked':''}> 수동</label><label><input type="radio" name="answerAudioPlayback" value="auto" ${q.answerAudioPlayback==='auto'?'checked':''}> 자동재생</label></div><footer class="admin-form-footer"><div class="left-actions"><button type="button" class="clear-btn" id="clearQuestion">이 문제 초기화</button></div><span class="autosave-note" id="autosaveNote">변경 내용 자동 저장</span><button type="submit" class="save-btn">저장</button></footer></div><aside class="admin-preview"><div class="preview-head"><strong>실제 화면 미리보기</strong><div class="preview-tabs"><button type="button" class="preview-tab ${adminPreviewMode==='question'?'active':''}" data-preview-mode="question">문제</button><button type="button" class="preview-tab ${adminPreviewMode==='answer'?'active':''}" data-preview-mode="answer">정답</button></div></div><div class="preview-screen" id="previewScreen"></div></aside></div></form></div></section></main></div>`;
+  wireCommonTopbar();document.querySelectorAll('[data-admin-num]').forEach(b=>b.addEventListener('click',()=>{saveAdminForm(false);adminIndex=Number(b.dataset.adminNum);adminPreviewMode='question';renderAdmin()}));document.getElementById('eventBtn').addEventListener('click',()=>{saveAdminForm(false);currentView='home';render()});document.getElementById('exportBtn').addEventListener('click',()=>{saveAdminForm(false);exportPack()});document.getElementById('importBtn').addEventListener('click',chooseImport);document.getElementById('adminForm').addEventListener('submit',e=>{e.preventDefault();saveAdminForm(true)});document.getElementById('clearQuestion').addEventListener('click',clearAdminQuestion);document.getElementById('qType').addEventListener('change',handleQuestionTypeChange);document.getElementById('answerType')?.addEventListener('change',()=>{syncAdminDynamic();queueAutosave()});['qText','qAnswer','qHint'].forEach(id=>document.getElementById(id)?.addEventListener('input',queueAutosave));document.querySelectorAll('input[name="audioPlayback"],input[name="answerAudioPlayback"]').forEach(x=>x.addEventListener('change',queueAutosave));document.querySelectorAll('[data-preview-mode]').forEach(b=>b.addEventListener('click',()=>{adminPreviewMode=b.dataset.previewMode;document.querySelectorAll('[data-preview-mode]').forEach(x=>x.classList.toggle('active',x.dataset.previewMode===adminPreviewMode));updatePreview()}));syncAdminDynamic();wireMediaCards();updatePreview();
 }
 
 async function handleQuestionTypeChange(){
@@ -650,13 +825,13 @@ async function handleQuestionTypeChange(){
   renderAdmin();
 }
 
-function questionFilled(q){return !!(q.question?.trim()||q.answer?.trim()||q.media?.questionImage||q.media?.answerImage||q.media?.video||q.media?.audio)}
+function questionFilled(q){return !!(q.question?.trim()||q.answer?.trim()||q.media?.questionImage||q.media?.answerImage||q.media?.video||q.media?.audio||q.media?.answerAudio)}
 function syncAdminDynamic(){const q=state.questions[adminIndex],type=document.getElementById('qType')?.value||q.type,at=document.getElementById('answerType'),answerField=document.getElementById('answerTypeField'),hidden=document.getElementById('hiddenOption'),choices=document.getElementById('choicesHost');if(type==='ox'||type==='hidden'){answerField.style.display='none'}else answerField.style.display='grid';if(type==='hidden')hidden.innerHTML=`<label class="hidden-text-option"><input type="checkbox" id="hiddenShowText" ${q.hiddenShowText?'checked':''}> 숨은그림 문제에서 문제 글도 함께 표시</label>`;else hidden.innerHTML='';const answerType=type==='ox'?'multiple':(at?.value||q.answerType);if(type!=='ox'&&type!=='hidden'&&answerType==='multiple')choices.innerHTML=`<div class="admin-choices"><span>보기</span>${q.choices.map((c,i)=>`<label class="admin-choice"><strong>${i+1}</strong><input data-choice="${i}" value="${esc(c)}"></label>`).join('')}<label class="admin-field"><span>정답 번호</span><select id="correctChoice">${[0,1,2,3].map(i=>`<option value="${i}" ${q.correctChoice===i?'selected':''}>${i+1}번</option>`).join('')}</select></label></div>`;else if(type==='ox')choices.innerHTML=`<label class="admin-field"><span>OX 정답</span><select id="oxAnswer"><option value="O" ${q.oxAnswer==='O'?'selected':''}>O</option><option value="X" ${q.oxAnswer==='X'?'selected':''}>X</option></select></label>`;else choices.innerHTML='';document.getElementById('hiddenShowText')?.addEventListener('change',queueAutosave);document.querySelectorAll('[data-choice]').forEach(x=>x.addEventListener('input',queueAutosave));document.getElementById('correctChoice')?.addEventListener('change',queueAutosave);document.getElementById('oxAnswer')?.addEventListener('change',queueAutosave);updatePreview()}
-function readAdminForm(q){const type=document.getElementById('qType')?.value||q.type;q.type=type;q.answerType=type==='ox'?'multiple':(document.getElementById('answerType')?.value||q.answerType);q.question=document.getElementById('qText')?.value||'';q.answer=document.getElementById('qAnswer')?.value||'';q.hint=document.getElementById('qHint')?.value||'';q.hiddenShowText=!!document.getElementById('hiddenShowText')?.checked;q.audioPlayback=document.querySelector('input[name="audioPlayback"]:checked')?.value||'manual';if(type==='ox')q.oxAnswer=document.getElementById('oxAnswer')?.value||'O';if(q.answerType==='multiple'&&type!=='ox')q.choices=[0,1,2,3].map(i=>document.querySelector(`[data-choice="${i}"]`)?.value||q.choices[i]||''),q.correctChoice=Number(document.getElementById('correctChoice')?.value||q.correctChoice||0);return q}
+function readAdminForm(q){const type=document.getElementById('qType')?.value||q.type;q.type=type;q.answerType=type==='ox'?'multiple':(document.getElementById('answerType')?.value||q.answerType);q.question=document.getElementById('qText')?.value||'';q.answer=document.getElementById('qAnswer')?.value||'';q.hint=document.getElementById('qHint')?.value||'';q.hiddenShowText=!!document.getElementById('hiddenShowText')?.checked;q.audioPlayback=document.querySelector('input[name="audioPlayback"]:checked')?.value||'manual';q.answerAudioPlayback=document.querySelector('input[name="answerAudioPlayback"]:checked')?.value||'manual';if(type==='ox')q.oxAnswer=document.getElementById('oxAnswer')?.value||'O';if(q.answerType==='multiple'&&type!=='ox')q.choices=[0,1,2,3].map(i=>document.querySelector(`[data-choice="${i}"]`)?.value||q.choices[i]||''),q.correctChoice=Number(document.getElementById('correctChoice')?.value||q.correctChoice||0);return q}
 function queueAutosave(){clearTimeout(autosaveTimer);autosaveTimer=setTimeout(()=>{saveAdminForm(false);const n=document.getElementById('autosaveNote');if(n){n.textContent='자동 저장됨';setTimeout(()=>n.textContent='변경 내용 자동 저장',1000)}},650);updatePreview()}
 function saveAdminForm(showToast){const q=state.questions[adminIndex];readAdminForm(q);if(q.type==='ox')q.answer=q.oxAnswer;if(q.answerType==='multiple'&&q.type!=='ox'&&!q.answer)q.answer=q.choices[q.correctChoice]||'';saveState();if(showToast){toast(`${adminIndex+1}번 문제 저장됨`);renderAdmin()}}
 async function clearAdminQuestion(){if(!confirm(`${adminIndex+1}번 문제의 글과 연결된 미디어를 모두 비울까요?`))return;const q=state.questions[adminIndex];for(const k of Object.values(q.media||{})){if(k&&!/^data:|^https?:|^\//.test(k)){try{await dbDelete(k)}catch{}revokeMedia(k)}}state.questions[adminIndex]=emptyQuestion(adminIndex+1);saveState();await pruneOrphanMedia();renderAdmin()}
-function mediaCard(q,kind,label,accept){const key=q.media[kind],name=q.mediaNames?.[kind]||key||'';const allowManualRemove=(kind==='answerImage'||kind==='audio');return `<section class="media-card" data-drop-kind="${kind}"><div class="media-card-title"><span>${label}</span><span>${kind==='audio'?'♬':kind==='video'?'▣':'↗'}</span></div><div class="media-drop" data-preview-kind="${kind}"><div><div class="bigicon">⌑</div><b>${label} 등록</b><small>클릭하거나 드래그하면 바로 등록·교체됩니다.</small></div>${key&&allowManualRemove?`<button class="media-remove-icon" type="button" title="${label} 제거" aria-label="${label} 제거" data-media-remove="${kind}">⌫</button>`:''}</div><div class="media-filename">${esc(name||'등록된 파일 없음')}</div><div class="media-actions single"><label>파일 선택<input type="file" accept="${accept}" data-media-input="${kind}"></label></div></section>`}
+function mediaCard(q,kind,label,accept){const key=q.media[kind],name=q.mediaNames?.[kind]||key||'';const isAudio=(kind==='audio'||kind==='answerAudio');return `<section class="media-card" data-drop-kind="${kind}"><div class="media-card-title"><span>${label}</span><span>${isAudio?'♬':kind==='video'?'▣':'↗'}</span></div><div class="media-drop" data-preview-kind="${kind}"><div><div class="bigicon">⌑</div><b>${label} 등록</b><small>클릭하거나 드래그하면 바로 등록·교체됩니다.</small></div>${key?`<button class="media-remove-icon" type="button" title="${label} 제거" aria-label="${label} 제거" data-media-remove="${kind}">⌫</button>`:''}</div><div class="media-filename">${esc(name||'등록된 파일 없음')}</div><div class="media-actions single"><label>파일 선택<input type="file" accept="${accept}" data-media-input="${kind}"></label></div></section>`}
 function wireMediaCards(){document.querySelectorAll('[data-media-input]').forEach(inp=>inp.addEventListener('change',e=>{const f=e.currentTarget.files?.[0];if(f)handleMediaFile(e.currentTarget.dataset.mediaInput,f)}));document.querySelectorAll('[data-media-remove]').forEach(b=>b.addEventListener('click',()=>removeMedia(b.dataset.mediaRemove)));document.querySelectorAll('[data-drop-kind]').forEach(card=>{const kind=card.dataset.dropKind;card.addEventListener('click',e=>{if(e.target.closest('button,label,input'))return;card.querySelector(`[data-media-input="${kind}"]`)?.click()});card.addEventListener('dragover',e=>{e.preventDefault();card.classList.add('is-drag')});card.addEventListener('dragleave',()=>card.classList.remove('is-drag'));card.addEventListener('drop',e=>{e.preventDefault();card.classList.remove('is-drag');const f=e.dataTransfer?.files?.[0];if(f)handleMediaFile(kind,f)})});refreshMediaPreviews()}
 async function optimizeImageFile(file){
   if(!file?.type?.startsWith('image/'))return file;
@@ -670,7 +845,7 @@ async function optimizeImageFile(file){
 }
 async function handleMediaFile(kind,file){const q=state.questions[adminIndex],key=qKey(q.number,kind);const stored=(kind==='questionImage'||kind==='answerImage')?await optimizeImageFile(file):file;await dbPut(key,stored);revokeMedia(key);q.media[kind]=key;q.mediaNames[kind]=file.name;saveState();toast(`${file.name} 저장됨`);renderAdmin()}
 async function removeMedia(kind){const q=state.questions[adminIndex],key=q.media[kind];if(key&&!/^data:|^https?:|^\//.test(key)){try{await dbDelete(key)}catch{}revokeMedia(key)}q.media[kind]=null;delete q.mediaNames[kind];saveState();renderAdmin()}
-async function refreshMediaPreviews(){const q=state.questions[adminIndex];for(const kind of ['questionImage','answerImage','video','audio']){const host=document.querySelector(`[data-preview-kind="${kind}"]`);if(!host)continue;const url=await mediaUrl(q.media[kind]);if(!url)continue;if(kind==='questionImage'||kind==='answerImage')host.innerHTML=`<img src="${url}" alt="${kind}">`;else if(kind==='video')host.innerHTML=`<video src="${url}" muted preload="metadata"></video>`;else host.innerHTML=`<div><div class="bigicon">♬</div><b>오디오 등록됨</b><small>${esc(q.mediaNames[kind]||'오디오 파일')}</small></div>`}}
+async function refreshMediaPreviews(){const q=state.questions[adminIndex];for(const kind of ['questionImage','answerImage','video','audio','answerAudio']){const host=document.querySelector(`[data-preview-kind="${kind}"]`);if(!host)continue;const url=await mediaUrl(q.media[kind]);if(!url)continue;if(kind==='questionImage'||kind==='answerImage')host.innerHTML=`<img src="${url}" alt="${kind}">`;else if(kind==='video')host.innerHTML=`<video src="${url}" muted preload="metadata"></video>`;else host.innerHTML=`<div><div class="bigicon">♬</div><b>${kind==='answerAudio'?'정답 음성':'문제 음성'} 등록됨</b><small>${esc(q.mediaNames[kind]||'오디오 파일')}</small></div>`}}
 async function updatePreview(){
   const host=document.getElementById('previewScreen');if(!host)return;
   const base=state.questions[adminIndex],q=normalizeQuestion(JSON.parse(JSON.stringify(base)),adminIndex+1);readAdminForm(q);
@@ -678,8 +853,8 @@ async function updatePreview(){
   const qImg=await mediaUrl(base.media.questionImage),aImg=await mediaUrl(base.media.answerImage),video=await mediaUrl(base.media.video);
   let media=null;
   if(adminPreviewMode==='question'){
-    if(q.type==='video'&&video)media=`<div class="preview-media"><video src="${video}" muted></video></div>`;
-    else if(['image','person','hidden'].includes(q.type)&&qImg)media=`<div class="preview-media"><img src="${qImg}" alt="문제"></div>`;
+    if(video&&(q.type==='video'||!qImg))media=`<div class="preview-media"><video src="${video}" muted></video></div>`;
+    else if(qImg)media=`<div class="preview-media"><img src="${qImg}" alt="문제"></div>`;
   }else if(aImg)media=`<div class="preview-media"><img src="${aImg}" alt="정답"></div>`;
   let body='';
   if(adminPreviewMode==='question'){
