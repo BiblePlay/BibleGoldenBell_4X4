@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#06111f">
 <title>BibleGoldenBell_4X4</title>
+<!-- media-first-fix 2026-08-22 -->
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <meta name="application-name" content="BibleGoldenBell">
@@ -87,23 +88,15 @@ button,input,textarea,select{font:inherit}button{cursor:pointer}button:focus-vis
 :fullscreen .master-logo-panel{padding:10px 24px}
 :fullscreen .master-logo-panel img{max-height:190px}
 
-/* Original local question / answer composition: no metadata labels and no inner answer card */
+/* Original local question / answer composition — unified final layout engine */
 .event-shell{height:100vh;overflow:hidden;background:var(--bg)}
 .question-wrap{height:100vh;padding:0;overflow:hidden}
 .question-view{
-  height:100%;
-  padding:16px;
-  display:grid;
-  grid-template-rows:40px minmax(0,1fr) 54px;
-  gap:10px;
-  overflow:hidden;
-  background:var(--bg);
-  border:0;
-  border-radius:0;
+  height:100%;padding:16px;display:grid;
+  grid-template-rows:40px minmax(0,1fr) 54px;gap:10px;
+  overflow:hidden;background:var(--bg);border:0;border-radius:0;
 }
-.question-toolbar{
-  display:flex;align-items:center;justify-content:space-between;
-}
+.question-toolbar{display:flex;align-items:center;justify-content:space-between}
 .question-toolbar button{
   min-width:104px;height:40px;padding:0 13px;
   display:inline-flex;align-items:center;justify-content:center;gap:6px;
@@ -111,84 +104,107 @@ button,input,textarea,select{font:inherit}button{cursor:pointer}button:focus-vis
   background:#081827;font-weight:800;
 }
 .question-toolbar button:hover{color:var(--accent);border-color:var(--accent)}
-.question-toolbar > span{
-  color:var(--accent);font-size:13px;font-weight:900;letter-spacing:.1em;
-}
+.question-toolbar>span{color:var(--accent);font-size:13px;font-weight:900;letter-spacing:.1em}
+
+/* The stage itself never scrolls. JS measures this exact box and fits content into it. */
 .question-stage{
-  min-height:0;padding:10px 28px;
+  min-height:0;padding:12px 30px;overflow:hidden;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  overflow:hidden;
 }
-.question-stage.has-media{
-  display:flex;flex-direction:column;align-items:stretch;justify-content:center;gap:10px;
+.question-stage.hidden-stage{padding:4px 30px}
+.question-stage.visual-question{gap:12px}
+
+.question-stage .question-text{
+  width:100%;max-width:1380px;margin:0 auto;padding:0;
+  text-align:center;color:#fff;font-size:120px;line-height:1.08;font-weight:950;
+  letter-spacing:-.055em;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere;
 }
-.question-stage.has-media.has-choices{
-  display:flex;flex-direction:column;align-items:stretch;justify-content:center;gap:10px;
+.question-stage.choice-question .question-text{margin-bottom:28px}
+.question-stage.visual-question .question-text{
+  flex:0 0 auto;max-width:1360px;font-size:54px;line-height:1.12;margin:0 auto;
 }
-.question-stage.hidden-stage{padding:2px}
+.question-stage.visual-question.choice-question .question-text{margin-bottom:8px}
+
+.question-stage .hint{
+  flex:0 0 auto;max-width:940px;margin:0 auto 12px;padding:8px 14px;
+  border:1px solid #294565;border-radius:8px;color:#ffb14d;background:#0b1928;
+  text-align:center;font-size:14px;font-weight:800;
+}
+.question-stage.visual-question .hint{margin-bottom:0}
+
+/* Visual media gets an exact width/height from the layout engine using natural aspect ratio. */
 .question-stage .media-stage{
-  width:100%;height:auto;min-height:0;margin:0;
+  flex:0 0 auto;min-width:0;min-height:0;margin:0 auto;
   display:flex;align-items:center;justify-content:center;overflow:hidden;
-}
-.question-stage.has-media .media-stage{
-  flex:1 1 auto;min-height:0;
 }
 .question-stage .media-stage img,
 .question-stage .media-stage video{
-  width:100%;height:100%;max-width:100%;max-height:100%;
-  object-fit:contain;border-radius:10px;background:#050c15;
+  display:block;width:100%;height:100%;max-width:100%;max-height:100%;
+  object-fit:contain;object-position:center center;border-radius:10px;background:#050c15;
 }
-.question-stage .audio-card{align-self:center}
-.question-stage .question-text{
-  width:100%;max-width:1160px;margin:0 auto;
-  padding:0;text-align:center;color:#fff;
-  font-size:clamp(48px,5.6vw,96px);line-height:1.14;font-weight:950;
-  letter-spacing:-.055em;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere;
-}
-.question-stage .question-text.medium{font-size:clamp(38px,4.4vw,72px)}
-.question-stage .question-text.long{font-size:clamp(28px,3.4vw,54px)}
-.question-stage.has-media .question-text{
-  flex:0 0 auto;max-height:none;padding:8px 18px;overflow:visible;line-height:1.22;
-}
-.question-stage.has-media .hint,.question-stage.has-media .choices,.question-stage.has-media .ox{flex:0 0 auto}
-.question-stage .hint{
-  margin:0 auto 10px;max-width:940px;padding:8px 14px;
-}
+.question-stage .media-stage video{background:#000}
+.question-stage .audio-card{align-self:center;width:min(760px,100%);padding:14px;border:1px solid #294565;border-radius:10px;background:#0b1928}
+.question-stage .audio-card audio{width:100%}
+
 .question-stage .choices{
-  width:min(1120px,100%);margin:0 auto;
+  flex:0 0 auto;width:min(1240px,100%);display:grid;grid-template-columns:1fr 1fr;
+  gap:10px;margin:0 auto;
+}
+.question-stage .choice{
+  min-height:74px;padding:13px 18px;display:flex;align-items:center;gap:12px;
+  border:1px solid #294565;border-radius:10px;background:#101c2e;
+  font-size:clamp(20px,2vw,31px);font-weight:900;
+}
+.question-stage .choice .n{
+  width:36px;height:36px;flex:0 0 36px;display:grid;place-items:center;
+  border-radius:7px;color:#07111d;background:var(--accent);font-size:18px;font-weight:950;
 }
 .question-stage .ox{
-  width:min(820px,84%);margin:36px auto 0;gap:70px;
+  flex:0 0 auto;width:min(880px,88%);display:grid;grid-template-columns:1fr 1fr;
+  gap:44px;margin:0 auto;
 }
-.question-stage .ox div{height:145px;font-size:86px}
+.question-stage .ox div{
+  height:150px;display:grid;place-items:center;border:2px solid #35516f;border-radius:18px;
+  background:#101c2e;font-size:92px;font-weight:950;
+}
+.question-stage .ox .o{color:#64a8ff}.question-stage .ox .x{color:#ff6d7e}
+
 .answer-direct{
-  width:100%;height:100%;min-height:0;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:16px;overflow:hidden;text-align:center;
+  width:100%;height:100%;min-height:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:18px;overflow:hidden;text-align:center;
 }
 .answer-direct .answer-text{
-  width:100%;max-width:1160px;margin:0;padding:0;
-  color:#fff;font-size:clamp(50px,5.5vw,92px);line-height:1.14;font-weight:950;
+  width:100%;max-width:1180px;margin:0;padding:0;color:#fff;
+  font-size:clamp(50px,5.5vw,92px);line-height:1.14;font-weight:950;
   letter-spacing:-.055em;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere;
 }
 .answer-direct .answer-text.medium{font-size:clamp(38px,4.3vw,70px)}
 .answer-direct .answer-text.long{font-size:clamp(28px,3.3vw,52px)}
 .answer-direct .answer-media{
-  width:100%;min-height:0;flex:1;
-  display:flex;align-items:center;justify-content:center;overflow:hidden;
+  width:100%;min-height:0;flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;
 }
 .answer-direct .answer-media img{
-  width:100%;height:100%;max-width:100%;max-height:100%;object-fit:contain;border-radius:10px;background:#050c15;
+  width:100%;height:100%;max-width:100%;max-height:100%;object-fit:contain;
+  border-radius:10px;background:#050c15;
 }
+/* 4-choice answer mirrors the question's number-badge visual language. */
+.answer-direct.multiple-answer .answer-choice-result{
+  width:min(980px,92%);min-height:116px;padding:20px 28px;
+  display:flex;align-items:center;justify-content:flex-start;gap:20px;
+  border:1px solid #294565;border-radius:14px;background:#101c2e;text-align:left;
+}
+.answer-choice-badge{
+  width:72px;height:72px;flex:0 0 72px;display:grid;place-items:center;
+  border-radius:11px;color:#07111d;background:var(--accent);font-size:38px;font-weight:950;
+}
+.answer-choice-text{color:#fff;font-size:clamp(44px,5.4vw,84px);line-height:1.08;font-weight:950;letter-spacing:-.045em}
 .answer-direct.ox-answer .ox-answer-symbol{
-  font-size:clamp(220px,42vmin,480px);line-height:.86;font-weight:950;
-  letter-spacing:-.06em;
+  font-size:clamp(220px,42vmin,480px);line-height:.86;font-weight:950;letter-spacing:-.06em;
 }
-.question-footer{display:flex;align-items:center;justify-content:center}
+.question-footer{display:flex;align-items:center;justify-content:center;gap:10px}
 .question-footer button{
   min-width:210px;height:50px;display:inline-flex;align-items:center;justify-content:center;
-  color:#07111d;border:0;border-radius:9px;background:var(--accent);
-  font-size:17px;font-weight:900;
+  color:#07111d;border:0;border-radius:9px;background:var(--accent);font-size:17px;font-weight:900;
 }
 .question-footer button:hover{background:var(--accent-hover)}
 
@@ -237,7 +253,33 @@ button,input,textarea,select{font:inherit}button{cursor:pointer}button:focus-vis
   stroke-linecap:round;stroke-linejoin:round;
 }
 
+
+/* Media admin: replacement is by clicking the preview/card; remove is only a small trash icon. */
+.media-drop{position:relative;cursor:pointer}
+.media-remove-icon{
+  position:absolute;right:7px;bottom:7px;z-index:4;
+  width:30px;height:30px;padding:0;display:grid;place-items:center;
+  border:1px solid rgba(180,35,24,.28);border-radius:8px;
+  background:rgba(255,255,255,.94);color:#b42318;font-size:15px;font-weight:900;
+}
+.media-remove-icon:hover{background:#fff3f1;border-color:#b42318}
+.media-actions.single{display:block}
+.media-actions.single label{width:100%;display:flex}
+
+
+.question-stage.fit-choice-question .question-text{font-size:72px}
+  .question-stage.has-visual-media .question-text{font-size:52px}
+}
+
+
+.preview-choice-answer{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;margin:auto}
+.preview-answer-badge{width:32px;height:32px;flex:0 0 32px;display:grid;place-items:center;border-radius:6px;color:#07111d;background:#ff9a00;font-size:14px;font-weight:950}
+.preview-answer-choice-text{color:#fff;font-size:clamp(18px,2vw,28px);line-height:1.08;font-weight:950}
+
 </style>
+<!-- FINAL-media-cleanup-2026-08-22 -->
+<!-- FINAL-adaptive-question-size-v2-2026-08-22 -->
+<!-- FINAL-UNIFIED-QUESTION-LAYOUT-2026-08-22 -->
 </head>
 <body>
 <div id="app"></div>
@@ -369,63 +411,141 @@ function undoClaim(){if(!progress.lastClaim)return;const {index,previous}=progre
 function findWinningLine(team){const lines=[];for(let r=0;r<4;r++)lines.push([r*4,r*4+1,r*4+2,r*4+3]);for(let c=0;c<4;c++)lines.push([c,c+4,c+8,c+12]);lines.push([0,5,10,15],[3,6,9,12]);return lines.find(line=>line.every(i=>progress.owners[i]===team))||null}
 function celebrate(team){const meta=TEAM_META[team]||TEAM_META[1],ov=document.createElement('div');ov.className='bingo-celebration';let conf='';for(let i=0;i<80;i++){const colors=[meta.color,'#fff','#ffcf70','#43d17a','#6ca8ff'];conf+=`<i class="confetti-piece" style="left:${(i*37)%100}%;background:${colors[i%colors.length]};animation-delay:${(i%12)*.04}s;transform:rotate(${i*43%180}deg)"></i>`}ov.innerHTML=conf+`<div class="bingo-card"><span>${meta.name}</span><strong>BINGO!</strong></div>`;document.body.appendChild(ov);setTimeout(()=>ov.remove(),3250)}
 
-// Media questions: keep the existing large type first, and shrink only when the real rendered content would clip.
-let mediaFitObserver=null;
-function stopMediaFitObserver(){try{mediaFitObserver?.disconnect()}catch{}mediaFitObserver=null}
-function fitMediaQuestionText(){
-  const stage=document.querySelector('.question-stage.has-media');
-  if(!stage||answerVisible)return;
-  const text=stage.querySelector('.question-text');
-  const media=stage.querySelector('.media-stage');
-  if(!text||!media)return;
-
-  // Always restart from the CSS-defined large size. Never carry a smaller size to the next question.
-  text.style.fontSize='';
-  media.style.minHeight='0px';
-  media.style.flexBasis='auto';
-
-  const stageH=stage.clientHeight;
-  if(stageH<180)return;
-
-  const hasChoices=!!stage.querySelector('.choices,.ox');
-  // Preserve meaningful media space, but give choices a little more room when necessary.
-  const mediaFloor=Math.max(120,Math.round(stageH*(hasChoices?0.28:0.38)));
-  media.style.minHeight=mediaFloor+'px';
-
-  const cssSize=parseFloat(getComputedStyle(text).fontSize)||48;
-  const minSize=Math.min(cssSize,26);
-  let size=cssSize;
-  text.style.fontSize=size+'px';
-
-  // Because the media has a floor, overflow now means the text/other content truly does not fit.
-  // Reduce only as much as needed, 2px at a time.
-  let guard=0;
-  while(stage.scrollHeight>stage.clientHeight+2 && size>minSize && guard<80){
-    size=Math.max(minSize,size-2);
-    text.style.fontSize=size+'px';
-    guard++;
+// Unified measured question layout engine. One observer, one fitting path.
+let questionLayoutObserver=null;
+function stopQuestionLayoutObserver(){
+  try{questionLayoutObserver?.disconnect()}catch{}
+  questionLayoutObserver=null;
+}
+function px(v){return Number.parseFloat(v)||0}
+function innerSize(el){
+  const s=getComputedStyle(el);
+  return {w:Math.max(0,el.clientWidth-px(s.paddingLeft)-px(s.paddingRight)),h:Math.max(0,el.clientHeight-px(s.paddingTop)-px(s.paddingBottom))};
+}
+function naturalMediaSize(el){
+  if(!el)return null;
+  if(el.tagName==='VIDEO'){
+    const w=Number(el.videoWidth||0),h=Number(el.videoHeight||0);
+    return w>0&&h>0?{w,h}:null;
   }
-
-  // Extremely long text: sacrifice some media height before allowing any clipping.
-  if(stage.scrollHeight>stage.clientHeight+2){
-    let floor=mediaFloor;
-    while(stage.scrollHeight>stage.clientHeight+2 && floor>82 && guard<130){
-      floor-=8;
-      media.style.minHeight=floor+'px';
-      guard++;
+  const w=Number(el.naturalWidth||0),h=Number(el.naturalHeight||0);
+  return w>0&&h>0?{w,h}:null;
+}
+function elementHeight(el){return el?el.getBoundingClientRect().height:0}
+function directGapHeight(stage){
+  const children=[...stage.children].filter(el=>getComputedStyle(el).display!=='none');
+  if(children.length<2)return 0;
+  const s=getComputedStyle(stage),gap=px(s.rowGap||s.gap);
+  return gap*(children.length-1);
+}
+function fitTextWithin(el,maxSize,minSize,maxHeight,lineHeight=1.08){
+  if(!el)return 0;
+  let lo=Math.max(1,Math.floor(minSize)),hi=Math.max(lo,Math.floor(maxSize)),best=lo;
+  el.style.lineHeight=String(lineHeight);
+  while(lo<=hi){
+    const mid=Math.floor((lo+hi)/2);
+    el.style.fontSize=mid+'px';
+    if(el.scrollHeight<=maxHeight+1){best=mid;lo=mid+1}else hi=mid-1;
+  }
+  el.style.fontSize=best+'px';
+  return best;
+}
+function fitNonVisualQuestion(stage){
+  const textEl=stage.querySelector('.question-text');
+  if(!textEl)return;
+  const hasChoices=!!stage.querySelector('.choices,.ox');
+  const {w}=innerSize(stage);
+  const maxSize=hasChoices?Math.min(98,Math.max(64,w*.068)):Math.min(132,Math.max(78,w*.082));
+  const minSize=hasChoices?30:34;
+  textEl.style.fontSize=maxSize+'px';
+  textEl.style.lineHeight=hasChoices?'1.09':'1.06';
+  let size=maxSize,guard=0;
+  while(stage.scrollHeight>stage.clientHeight+1&&size>minSize&&guard<120){
+    size=Math.max(minSize,size-2);textEl.style.fontSize=size+'px';guard++;
+  }
+  // Absolute last resort for exceptionally long choice/OX questions: compact boxes a little,
+  // while preserving the designed question-to-options spacing.
+  if(stage.scrollHeight>stage.clientHeight+1&&hasChoices){
+    const choices=stage.querySelector('.choices');
+    const ox=stage.querySelector('.ox');
+    if(choices)choices.querySelectorAll('.choice').forEach(el=>{el.style.minHeight='64px';el.style.padding='10px 15px'});
+    if(ox)ox.querySelectorAll('div').forEach(el=>{el.style.height='126px';el.style.fontSize='82px'});
+    while(stage.scrollHeight>stage.clientHeight+1&&size>26&&guard<180){
+      size=Math.max(26,size-2);textEl.style.fontSize=size+'px';guard++;
     }
   }
 }
-function scheduleMediaQuestionFit(){
-  stopMediaFitObserver();
-  const stage=document.querySelector('.question-stage.has-media');
-  if(!stage||answerVisible)return;
+function fitVisualQuestion(stage){
+  const mediaStage=stage.querySelector('.media-stage');
+  const mediaEl=mediaStage?.querySelector('img,video');
+  if(!mediaStage||!mediaEl)return;
+  const natural=naturalMediaSize(mediaEl);
+  if(!natural)return; // load / loadedmetadata event schedules another pass.
+
+  const textEl=stage.querySelector('.question-text');
+  const {w:innerW,h:innerH}=innerSize(stage);
+  const children=[...stage.children].filter(el=>getComputedStyle(el).display!=='none');
+  const gapTotal=directGapHeight(stage);
+  const fixedH=children.filter(el=>el!==mediaStage&&el!==textEl).reduce((sum,el)=>sum+elementHeight(el),0);
+
+  // Reserve only the minimum readable text. This makes image/video the primary element.
+  let minTextH=0;
+  const hasChoices=!!stage.querySelector('.choices,.ox');
+  const minFont=hasChoices?Math.max(28,Math.min(34,innerW*.022)):Math.max(30,Math.min(40,innerW*.023));
+  const maxFont=hasChoices?Math.max(38,Math.min(50,innerW*.029)):Math.max(44,Math.min(58,innerW*.034));
+  if(textEl){textEl.style.fontSize=minFont+'px';textEl.style.lineHeight='1.12';minTextH=textEl.scrollHeight}
+
+  let availableForMedia=Math.max(80,innerH-fixedH-gapTotal-minTextH);
+  const aspect=natural.w/natural.h;
+  let mediaW=Math.min(innerW,availableForMedia*aspect);
+  let mediaH=mediaW/aspect;
+  if(mediaH>availableForMedia){mediaH=availableForMedia;mediaW=mediaH*aspect}
+  mediaStage.style.width=Math.max(1,Math.floor(mediaW))+'px';
+  mediaStage.style.height=Math.max(1,Math.floor(mediaH))+'px';
+  mediaStage.style.flex='0 0 '+Math.max(1,Math.floor(mediaH))+'px';
+
+  if(textEl){
+    const remaining=Math.max(minTextH,innerH-fixedH-gapTotal-mediaH);
+    fitTextWithin(textEl,maxFont,minFont,remaining,1.12);
+    // If even the minimum text cannot fit, reduce media only as the final fallback.
+    let guard=0;
+    while(stage.scrollHeight>stage.clientHeight+1&&mediaH>110&&guard<100){
+      mediaH-=8;mediaW=Math.min(innerW,mediaH*aspect);mediaH=mediaW/aspect;
+      mediaStage.style.width=Math.max(1,Math.floor(mediaW))+'px';
+      mediaStage.style.height=Math.max(1,Math.floor(mediaH))+'px';
+      mediaStage.style.flex='0 0 '+Math.max(1,Math.floor(mediaH))+'px';
+      const rem=Math.max(1,innerH-fixedH-gapTotal-mediaH);
+      fitTextWithin(textEl,maxFont,minFont,rem,1.12);guard++;
+    }
+  }
+}
+function fitQuestionLayout(){
+  if(answerVisible)return;
+  const stage=document.querySelector('.question-stage');
+  if(!stage)return;
+  // Clear only inline sizing created by this engine before recalculation.
+  const textEl=stage.querySelector('.question-text');
+  if(textEl){textEl.style.fontSize='';textEl.style.lineHeight=''}
+  const mediaStage=stage.querySelector('.media-stage');
+  if(mediaStage){mediaStage.style.width='';mediaStage.style.height='';mediaStage.style.flex=''}
+  stage.querySelectorAll('.choice').forEach(el=>{el.style.minHeight='';el.style.padding=''})
+  stage.querySelectorAll('.ox div').forEach(el=>{el.style.height='';el.style.fontSize=''})
+  if(stage.classList.contains('visual-question'))fitVisualQuestion(stage);else fitNonVisualQuestion(stage);
+}
+function scheduleQuestionLayout(){
+  stopQuestionLayoutObserver();
+  if(answerVisible)return;
+  const stage=document.querySelector('.question-stage');
+  if(!stage)return;
   let raf=0;
-  const run=()=>{cancelAnimationFrame(raf);raf=requestAnimationFrame(()=>requestAnimationFrame(fitMediaQuestionText))};
+  const run=()=>{cancelAnimationFrame(raf);raf=requestAnimationFrame(()=>requestAnimationFrame(fitQuestionLayout))};
   run();
   stage.querySelectorAll('img').forEach(el=>{if(!el.complete)el.addEventListener('load',run,{once:true})});
-  stage.querySelectorAll('video').forEach(el=>el.addEventListener('loadedmetadata',run,{once:true}));
-  if('ResizeObserver' in window){mediaFitObserver=new ResizeObserver(run);mediaFitObserver.observe(stage)}
+  stage.querySelectorAll('video').forEach(el=>{
+    if(el.readyState<1)el.addEventListener('loadedmetadata',run,{once:true});
+    else run();
+  });
+  if('ResizeObserver' in window){questionLayoutObserver=new ResizeObserver(run);questionLayoutObserver.observe(stage)}
 }
 
 async function renderQuestion(i){
@@ -438,39 +558,47 @@ async function renderQuestion(i){
   let stage='';
   if(!answerVisible){
     const qt=(q.question||'').trim();
-    const textSize=qt.length>90?'long':qt.length>50?'medium':'';
-    const hasImage=['image','person','hidden'].includes(q.type)&&!!qImg;
+    const isHidden=q.type==='hidden';
+    const hasImage=['image','person'].includes(q.type)&&!!qImg;
     const hasVideo=q.type==='video'&&!!video;
-    const hasAudio=!!audio;
-    const hasMedia=hasImage||hasVideo||hasAudio;
+    const hasVisualMedia=hasImage||hasVideo||(isHidden&&!!qImg);
     const hasChoices=q.type==='ox'||(q.answerType==='multiple'&&q.type!=='ox');
 
-    if(q.type==='hidden'){
+    if(isHidden){
       let hidden='';
       if(qImg)hidden+=`<div class="media-stage"><img src="${qImg}" alt="숨은그림 문제"></div>`;
-      if(q.hiddenShowText&&qt)hidden+=`<div class="question-text ${textSize}">${esc(qt)}</div>`;
-      stage=`<section class="question-stage hidden-stage ${q.hiddenShowText&&qt?'has-media':''}">${hidden}</section>`;
+      if(q.hiddenShowText&&qt)hidden+=`<div class="question-text">${esc(qt)}</div>`;
+      stage=`<section class="question-stage hidden-stage ${qImg?'visual-question':''}">${hidden}</section>`;
     }else{
       let content='';
       if(q.hint)content+=`<div class="hint">힌트 · ${esc(q.hint)}</div>`;
-      if(hasVideo)content+=`<div class="media-stage"><video src="${video}" controls playsinline></video></div>`;
+      if(hasVideo)content+=`<div class="media-stage"><video src="${video}" controls playsinline preload="metadata"></video></div>`;
       else if(hasImage)content+=`<div class="media-stage"><img src="${qImg}" alt="문제 이미지"></div>`;
-      else if(hasAudio)content+=`<div class="media-stage"><div class="audio-card"><audio id="qAudio" src="${audio}" controls></audio></div></div>`;
-      if(qt)content+=`<div class="question-text ${textSize}">${esc(qt)}</div>`;
+      else if(audio)content+=`<div class="media-stage audio-only"><div class="audio-card"><audio id="qAudio" src="${audio}" controls></audio></div></div>`;
+      if(qt)content+=`<div class="question-text">${esc(qt)}</div>`;
       if(q.type==='ox'){
         content+=`<div class="ox"><div class="o">O</div><div class="x">X</div></div>`;
       }else if(q.answerType==='multiple'){
         const filledChoices=(q.choices||[]).map((c,n)=>({c:String(c||'').trim(),n})).filter(x=>x.c);
         if(filledChoices.length)content+=`<div class="choices">${filledChoices.map(x=>`<div class="choice"><span class="n">${x.n+1}</span><span>${esc(x.c)}</span></div>`).join('')}</div>`;
       }
-      stage=`<section class="question-stage ${hasMedia?'has-media':''} ${hasChoices?'has-choices':''}">${content}</section>`;
+      const cls=['question-stage',hasVisualMedia?'visual-question':'',hasChoices?'choice-question':'',audio&&!hasVisualMedia?'audio-question':''].filter(Boolean).join(' ');
+      stage=`<section class="${cls}">${content}</section>`;
     }
   }else{
+    const isMultiple=q.answerType==='multiple'&&q.type!=='ox';
     let ans=q.type==='ox'?String(q.oxAnswer||'O'):(q.answer||'').trim();
-    if(q.answerType==='multiple'&&q.type!=='ox'&&!ans)ans=(q.choices||[])[q.correctChoice]||'';
+    if(isMultiple&&!ans)ans=(q.choices||[])[q.correctChoice]||'';
     const answerSize=ans.length>90?'long':ans.length>50?'medium':'';
     if(q.type==='ox'){
       stage=`<section class="question-stage"><div class="answer-direct ox-answer"><div class="ox-answer-symbol">${esc(ans||'')}</div></div></section>`;
+    }else if(isMultiple){
+      const idx=Math.max(0,Math.min(3,Number(q.correctChoice)||0));
+      const choiceText=String((q.choices||[])[idx]||ans||'').trim();
+      let inside='';
+      if(aImg)inside+=`<div class="answer-media"><img src="${aImg}" alt="정답 이미지"></div>`;
+      if(choiceText)inside+=`<div class="answer-choice-result"><span class="answer-choice-badge">${idx+1}</span><span class="answer-choice-text">${esc(choiceText)}</span></div>`;
+      stage=`<section class="question-stage"><div class="answer-direct multiple-answer">${inside}</div></section>`;
     }else{
       let inside='';
       if(aImg)inside+=`<div class="answer-media"><img src="${aImg}" alt="정답 이미지"></div>`;
@@ -490,35 +618,45 @@ async function renderQuestion(i){
 
   document.getElementById('boardBtn').addEventListener('click',async()=>{
     const wanted=!!document.fullscreenElement;
-    answerVisible=false;currentView='home';renderHome();
+    answerVisible=false;currentView='home';stopQuestionLayoutObserver();renderHome();
     if(wanted&&!document.fullscreenElement){try{await enterFullscreen()}catch{}}
   });
   document.getElementById('quickBoardBtn')?.addEventListener('click',async()=>{
     const wanted=!!document.fullscreenElement;
-    answerVisible=false;currentView='home';renderHome();
+    answerVisible=false;currentView='home';stopQuestionLayoutObserver();renderHome();
     if(wanted&&!document.fullscreenElement){try{await enterFullscreen()}catch{}}
   });
   document.getElementById('answerBtn').addEventListener('click',async()=>{
     const wanted=!!document.fullscreenElement;
-    answerVisible=!answerVisible;await renderQuestion(i);
+    stopQuestionLayoutObserver();answerVisible=!answerVisible;await renderQuestion(i);
     if(wanted&&!document.fullscreenElement){try{await enterFullscreen()}catch{}}
   });
   if(!answerVisible&&audio&&q.audioPlayback==='auto')setTimeout(()=>document.getElementById('qAudio')?.play().catch(()=>{}),80);
-  if(!answerVisible&&document.querySelector('.question-stage.has-media'))scheduleMediaQuestionFit();else stopMediaFitObserver();
+  if(!answerVisible)scheduleQuestionLayout();else stopQuestionLayoutObserver();
 }
 
 function renderAdmin(){
   currentView='admin';const q=state.questions[adminIndex];const slots=state.questions.map((x,i)=>`<button class="${i===adminIndex?'is-selected ':''}${questionFilled(x)?'is-filled':''}" data-admin-num="${i}"><strong>${i+1}</strong></button>`).join('');
   document.getElementById('app').innerHTML=`<div class="admin-shell">${commonTopbar()}<main class="admin-scroll-area"><section class="admin-panel"><header class="admin-header"><div><span class="kicker">ADMIN</span><h1>16문제 관리</h1><p>1번부터 16번까지 각 문제의 유형과 내용을 직접 설정합니다.</p></div><div class="admin-header-actions"><button class="admin-secondary-button" id="exportBtn">⇩ 내보내기</button><button class="admin-secondary-button" id="importBtn">☁ 불러오기</button><button class="admin-secondary-button" id="eventBtn">← 행사 화면</button></div></header><div class="admin-layout"><aside class="admin-nav"><div class="admin-nav-kicker">4×4 BOARD</div><div class="admin-nav-title">16문제</div><div class="admin-slot-label">문제 번호</div><div class="admin-slots">${slots}</div></aside><form class="admin-form" id="adminForm"><div class="admin-form-title">${adminIndex+1}번 문제</div><div class="admin-workspace"><div class="admin-editor"><div class="admin-form-grid"><label class="admin-field"><span>문제 유형</span><select id="qType">${Object.entries(TYPE_LABELS).map(([v,l])=>`<option value="${v}" ${q.type===v?'selected':''}>${l}</option>`).join('')}</select></label><label class="admin-field" id="answerTypeField"><span>답변 방식</span><select id="answerType"><option value="short" ${q.answerType==='short'?'selected':''}>단답형</option><option value="multiple" ${q.answerType==='multiple'?'selected':''}>4지선다</option></select></label></div><div id="hiddenOption"></div><label class="admin-field full"><span>문제</span><textarea id="qText">${esc(q.question)}</textarea></label><div id="choicesHost"></div><label class="admin-field full"><span>정답</span><input id="qAnswer" value="${esc(q.answer)}"></label><label class="admin-field full"><span>힌트 (선택)</span><input id="qHint" value="${esc(q.hint)}" placeholder="필요한 문제에만 입력하세요."></label><div class="media-grid">${mediaCard(q,'questionImage','문제 이미지','image/*')}${mediaCard(q,'answerImage','정답 이미지','image/*')}${mediaCard(q,'video','동영상','video/*')}${mediaCard(q,'audio','오디오','audio/*')}</div><div class="audio-options"><span>오디오 재생</span><label><input type="radio" name="audioPlayback" value="manual" ${q.audioPlayback!=='auto'?'checked':''}> 수동</label><label><input type="radio" name="audioPlayback" value="auto" ${q.audioPlayback==='auto'?'checked':''}> 자동재생</label></div><footer class="admin-form-footer"><div class="left-actions"><button type="button" class="clear-btn" id="clearQuestion">이 문제 초기화</button></div><span class="autosave-note" id="autosaveNote">변경 내용 자동 저장</span><button type="submit" class="save-btn">저장</button></footer></div><aside class="admin-preview"><div class="preview-head"><strong>실제 화면 미리보기</strong><div class="preview-tabs"><button type="button" class="preview-tab ${adminPreviewMode==='question'?'active':''}" data-preview-mode="question">문제</button><button type="button" class="preview-tab ${adminPreviewMode==='answer'?'active':''}" data-preview-mode="answer">정답</button></div></div><div class="preview-screen" id="previewScreen"></div></aside></div></form></div></section></main></div>`;
-  wireCommonTopbar();document.querySelectorAll('[data-admin-num]').forEach(b=>b.addEventListener('click',()=>{saveAdminForm(false);adminIndex=Number(b.dataset.adminNum);adminPreviewMode='question';renderAdmin()}));document.getElementById('eventBtn').addEventListener('click',()=>{saveAdminForm(false);currentView='home';render()});document.getElementById('exportBtn').addEventListener('click',()=>{saveAdminForm(false);exportPack()});document.getElementById('importBtn').addEventListener('click',chooseImport);document.getElementById('adminForm').addEventListener('submit',e=>{e.preventDefault();saveAdminForm(true)});document.getElementById('clearQuestion').addEventListener('click',clearAdminQuestion);document.getElementById('qType').addEventListener('change',()=>{syncAdminDynamic();queueAutosave()});document.getElementById('answerType')?.addEventListener('change',()=>{syncAdminDynamic();queueAutosave()});['qText','qAnswer','qHint'].forEach(id=>document.getElementById(id)?.addEventListener('input',queueAutosave));document.querySelectorAll('input[name="audioPlayback"]').forEach(x=>x.addEventListener('change',queueAutosave));document.querySelectorAll('[data-preview-mode]').forEach(b=>b.addEventListener('click',()=>{adminPreviewMode=b.dataset.previewMode;document.querySelectorAll('[data-preview-mode]').forEach(x=>x.classList.toggle('active',x.dataset.previewMode===adminPreviewMode));updatePreview()}));syncAdminDynamic();wireMediaCards();updatePreview();
+  wireCommonTopbar();document.querySelectorAll('[data-admin-num]').forEach(b=>b.addEventListener('click',()=>{saveAdminForm(false);adminIndex=Number(b.dataset.adminNum);adminPreviewMode='question';renderAdmin()}));document.getElementById('eventBtn').addEventListener('click',()=>{saveAdminForm(false);currentView='home';render()});document.getElementById('exportBtn').addEventListener('click',()=>{saveAdminForm(false);exportPack()});document.getElementById('importBtn').addEventListener('click',chooseImport);document.getElementById('adminForm').addEventListener('submit',e=>{e.preventDefault();saveAdminForm(true)});document.getElementById('clearQuestion').addEventListener('click',clearAdminQuestion);document.getElementById('qType').addEventListener('change',handleQuestionTypeChange);document.getElementById('answerType')?.addEventListener('change',()=>{syncAdminDynamic();queueAutosave()});['qText','qAnswer','qHint'].forEach(id=>document.getElementById(id)?.addEventListener('input',queueAutosave));document.querySelectorAll('input[name="audioPlayback"]').forEach(x=>x.addEventListener('change',queueAutosave));document.querySelectorAll('[data-preview-mode]').forEach(b=>b.addEventListener('click',()=>{adminPreviewMode=b.dataset.previewMode;document.querySelectorAll('[data-preview-mode]').forEach(x=>x.classList.toggle('active',x.dataset.previewMode===adminPreviewMode));updatePreview()}));syncAdminDynamic();wireMediaCards();updatePreview();
 }
+
+async function handleQuestionTypeChange(){
+  const q=state.questions[adminIndex];
+  readAdminForm(q);
+  // Media is intentionally preserved when the type changes.
+  // The current type only controls what is shown; choosing a new file replaces the old one.
+  saveState();
+  renderAdmin();
+}
+
 function questionFilled(q){return !!(q.question?.trim()||q.answer?.trim()||q.media?.questionImage||q.media?.answerImage||q.media?.video||q.media?.audio)}
 function syncAdminDynamic(){const q=state.questions[adminIndex],type=document.getElementById('qType')?.value||q.type,at=document.getElementById('answerType'),answerField=document.getElementById('answerTypeField'),hidden=document.getElementById('hiddenOption'),choices=document.getElementById('choicesHost');if(type==='ox'||type==='hidden'){answerField.style.display='none'}else answerField.style.display='grid';if(type==='hidden')hidden.innerHTML=`<label class="hidden-text-option"><input type="checkbox" id="hiddenShowText" ${q.hiddenShowText?'checked':''}> 숨은그림 문제에서 문제 글도 함께 표시</label>`;else hidden.innerHTML='';const answerType=type==='ox'?'multiple':(at?.value||q.answerType);if(type!=='ox'&&type!=='hidden'&&answerType==='multiple')choices.innerHTML=`<div class="admin-choices"><span>보기</span>${q.choices.map((c,i)=>`<label class="admin-choice"><strong>${i+1}</strong><input data-choice="${i}" value="${esc(c)}"></label>`).join('')}<label class="admin-field"><span>정답 번호</span><select id="correctChoice">${[0,1,2,3].map(i=>`<option value="${i}" ${q.correctChoice===i?'selected':''}>${i+1}번</option>`).join('')}</select></label></div>`;else if(type==='ox')choices.innerHTML=`<label class="admin-field"><span>OX 정답</span><select id="oxAnswer"><option value="O" ${q.oxAnswer==='O'?'selected':''}>O</option><option value="X" ${q.oxAnswer==='X'?'selected':''}>X</option></select></label>`;else choices.innerHTML='';document.getElementById('hiddenShowText')?.addEventListener('change',queueAutosave);document.querySelectorAll('[data-choice]').forEach(x=>x.addEventListener('input',queueAutosave));document.getElementById('correctChoice')?.addEventListener('change',queueAutosave);document.getElementById('oxAnswer')?.addEventListener('change',queueAutosave);updatePreview()}
 function readAdminForm(q){const type=document.getElementById('qType')?.value||q.type;q.type=type;q.answerType=type==='ox'?'multiple':(document.getElementById('answerType')?.value||q.answerType);q.question=document.getElementById('qText')?.value||'';q.answer=document.getElementById('qAnswer')?.value||'';q.hint=document.getElementById('qHint')?.value||'';q.hiddenShowText=!!document.getElementById('hiddenShowText')?.checked;q.audioPlayback=document.querySelector('input[name="audioPlayback"]:checked')?.value||'manual';if(type==='ox')q.oxAnswer=document.getElementById('oxAnswer')?.value||'O';if(q.answerType==='multiple'&&type!=='ox')q.choices=[0,1,2,3].map(i=>document.querySelector(`[data-choice="${i}"]`)?.value||q.choices[i]||''),q.correctChoice=Number(document.getElementById('correctChoice')?.value||q.correctChoice||0);return q}
 function queueAutosave(){clearTimeout(autosaveTimer);autosaveTimer=setTimeout(()=>{saveAdminForm(false);const n=document.getElementById('autosaveNote');if(n){n.textContent='자동 저장됨';setTimeout(()=>n.textContent='변경 내용 자동 저장',1000)}},650);updatePreview()}
 function saveAdminForm(showToast){const q=state.questions[adminIndex];readAdminForm(q);if(q.type==='ox')q.answer=q.oxAnswer;if(q.answerType==='multiple'&&q.type!=='ox'&&!q.answer)q.answer=q.choices[q.correctChoice]||'';saveState();if(showToast){toast(`${adminIndex+1}번 문제 저장됨`);renderAdmin()}}
-async function clearAdminQuestion(){if(!confirm(`${adminIndex+1}번 문제의 글과 연결된 미디어를 모두 비울까요?`))return;const q=state.questions[adminIndex];for(const k of Object.values(q.media||{})){if(k&&!/^data:|^https?:|^\//.test(k)){try{await dbDelete(k)}catch{}revokeMedia(k)}}state.questions[adminIndex]=emptyQuestion(adminIndex+1);saveState();renderAdmin()}
-function mediaCard(q,kind,label,accept){const key=q.media[kind],name=q.mediaNames?.[kind]||key||'';return `<section class="media-card" data-drop-kind="${kind}"><div class="media-card-title"><span>${label}</span><span>${kind==='audio'?'♬':kind==='video'?'▣':'↗'}</span></div><div class="media-drop" data-preview-kind="${kind}"><div><div class="bigicon">⌑</div><b>${label} 등록</b><small>드래그하거나 클릭해서 선택</small></div></div><div class="media-filename">${esc(name||'등록된 파일 없음')}</div><div class="media-actions"><label>파일 선택<input type="file" accept="${accept}" data-media-input="${kind}"></label>${key?`<button type="button" data-media-remove="${kind}">삭제</button>`:''}</div></section>`}
+async function clearAdminQuestion(){if(!confirm(`${adminIndex+1}번 문제의 글과 연결된 미디어를 모두 비울까요?`))return;const q=state.questions[adminIndex];for(const k of Object.values(q.media||{})){if(k&&!/^data:|^https?:|^\//.test(k)){try{await dbDelete(k)}catch{}revokeMedia(k)}}state.questions[adminIndex]=emptyQuestion(adminIndex+1);saveState();await pruneOrphanMedia();renderAdmin()}
+function mediaCard(q,kind,label,accept){const key=q.media[kind],name=q.mediaNames?.[kind]||key||'';const allowManualRemove=(kind==='answerImage'||kind==='audio');return `<section class="media-card" data-drop-kind="${kind}"><div class="media-card-title"><span>${label}</span><span>${kind==='audio'?'♬':kind==='video'?'▣':'↗'}</span></div><div class="media-drop" data-preview-kind="${kind}"><div><div class="bigicon">⌑</div><b>${label} 등록</b><small>클릭하거나 드래그하면 바로 등록·교체됩니다.</small></div>${key&&allowManualRemove?`<button class="media-remove-icon" type="button" title="${label} 제거" aria-label="${label} 제거" data-media-remove="${kind}">⌫</button>`:''}</div><div class="media-filename">${esc(name||'등록된 파일 없음')}</div><div class="media-actions single"><label>파일 선택<input type="file" accept="${accept}" data-media-input="${kind}"></label></div></section>`}
 function wireMediaCards(){document.querySelectorAll('[data-media-input]').forEach(inp=>inp.addEventListener('change',e=>{const f=e.currentTarget.files?.[0];if(f)handleMediaFile(e.currentTarget.dataset.mediaInput,f)}));document.querySelectorAll('[data-media-remove]').forEach(b=>b.addEventListener('click',()=>removeMedia(b.dataset.mediaRemove)));document.querySelectorAll('[data-drop-kind]').forEach(card=>{const kind=card.dataset.dropKind;card.addEventListener('click',e=>{if(e.target.closest('button,label,input'))return;card.querySelector(`[data-media-input="${kind}"]`)?.click()});card.addEventListener('dragover',e=>{e.preventDefault();card.classList.add('is-drag')});card.addEventListener('dragleave',()=>card.classList.remove('is-drag'));card.addEventListener('drop',e=>{e.preventDefault();card.classList.remove('is-drag');const f=e.dataTransfer?.files?.[0];if(f)handleMediaFile(kind,f)})});refreshMediaPreviews()}
 async function optimizeImageFile(file){
   if(!file?.type?.startsWith('image/'))return file;
@@ -533,9 +671,60 @@ async function optimizeImageFile(file){
 async function handleMediaFile(kind,file){const q=state.questions[adminIndex],key=qKey(q.number,kind);const stored=(kind==='questionImage'||kind==='answerImage')?await optimizeImageFile(file):file;await dbPut(key,stored);revokeMedia(key);q.media[kind]=key;q.mediaNames[kind]=file.name;saveState();toast(`${file.name} 저장됨`);renderAdmin()}
 async function removeMedia(kind){const q=state.questions[adminIndex],key=q.media[kind];if(key&&!/^data:|^https?:|^\//.test(key)){try{await dbDelete(key)}catch{}revokeMedia(key)}q.media[kind]=null;delete q.mediaNames[kind];saveState();renderAdmin()}
 async function refreshMediaPreviews(){const q=state.questions[adminIndex];for(const kind of ['questionImage','answerImage','video','audio']){const host=document.querySelector(`[data-preview-kind="${kind}"]`);if(!host)continue;const url=await mediaUrl(q.media[kind]);if(!url)continue;if(kind==='questionImage'||kind==='answerImage')host.innerHTML=`<img src="${url}" alt="${kind}">`;else if(kind==='video')host.innerHTML=`<video src="${url}" muted preload="metadata"></video>`;else host.innerHTML=`<div><div class="bigicon">♬</div><b>오디오 등록됨</b><small>${esc(q.mediaNames[kind]||'오디오 파일')}</small></div>`}}
-async function updatePreview(){const host=document.getElementById('previewScreen');if(!host)return;const base=state.questions[adminIndex],q=normalizeQuestion(JSON.parse(JSON.stringify(base)),adminIndex+1);readAdminForm(q);host.classList.toggle('is-ox-answer',adminPreviewMode==='answer'&&q.type==='ox');const qImg=await mediaUrl(base.media.questionImage),aImg=await mediaUrl(base.media.answerImage),video=await mediaUrl(base.media.video);let media=null;if(adminPreviewMode==='question'){if(q.type==='video'&&video)media=`<div class="preview-media"><video src="${video}" muted></video></div>`;else if(['image','person','hidden'].includes(q.type)&&qImg)media=`<div class="preview-media"><img src="${qImg}" alt="문제"></div>`}else if(aImg)media=`<div class="preview-media"><img src="${aImg}" alt="정답"></div>`;let txt=adminPreviewMode==='question'?q.question:(q.type==='ox'?q.oxAnswer:(q.answer||((q.answerType==='multiple')?q.choices[q.correctChoice]:'')));let body='';if(adminPreviewMode==='question'&&q.hint)body+=`<div class="preview-hint">힌트 · ${esc(q.hint)}</div>`;if(media)body+=media;if((q.type!=='hidden'||q.hiddenShowText||adminPreviewMode==='answer'))body+=`<div class="preview-text ${media?'with-image':''}">${esc(txt||'')}</div>`;if(adminPreviewMode==='question'&&q.type==='ox')body+=`<div class="preview-choice-grid"><div class="preview-choice"><span class="preview-choice-number">O</span><span>O</span></div><div class="preview-choice"><span class="preview-choice-number">X</span><span>X</span></div></div>`;else if(adminPreviewMode==='question'&&q.answerType==='multiple'&&q.type!=='ox')body+=`<div class="preview-choice-grid">${q.choices.map((c,i)=>`<div class="preview-choice"><span class="preview-choice-number">${i+1}</span><span>${esc(c||'')}</span></div>`).join('')}</div>`;host.innerHTML=`<div class="preview-top"><span>4×4 BOARD</span><span>${adminIndex+1}번</span></div><div class="preview-body">${body}</div><div class="preview-score">${adminIndex+1}번</div>`}
+async function updatePreview(){
+  const host=document.getElementById('previewScreen');if(!host)return;
+  const base=state.questions[adminIndex],q=normalizeQuestion(JSON.parse(JSON.stringify(base)),adminIndex+1);readAdminForm(q);
+  host.classList.toggle('is-ox-answer',adminPreviewMode==='answer'&&q.type==='ox');
+  const qImg=await mediaUrl(base.media.questionImage),aImg=await mediaUrl(base.media.answerImage),video=await mediaUrl(base.media.video);
+  let media=null;
+  if(adminPreviewMode==='question'){
+    if(q.type==='video'&&video)media=`<div class="preview-media"><video src="${video}" muted></video></div>`;
+    else if(['image','person','hidden'].includes(q.type)&&qImg)media=`<div class="preview-media"><img src="${qImg}" alt="문제"></div>`;
+  }else if(aImg)media=`<div class="preview-media"><img src="${aImg}" alt="정답"></div>`;
+  let body='';
+  if(adminPreviewMode==='question'){
+    if(q.hint)body+=`<div class="preview-hint">힌트 · ${esc(q.hint)}</div>`;
+    if(media)body+=media;
+    if(q.type!=='hidden'||q.hiddenShowText)body+=`<div class="preview-text ${media?'with-image':''}">${esc(q.question||'')}</div>`;
+    if(q.type==='ox')body+=`<div class="preview-choice-grid"><div class="preview-choice"><span class="preview-choice-number">O</span><span>O</span></div><div class="preview-choice"><span class="preview-choice-number">X</span><span>X</span></div></div>`;
+    else if(q.answerType==='multiple')body+=`<div class="preview-choice-grid">${q.choices.map((c,i)=>`<div class="preview-choice"><span class="preview-choice-number">${i+1}</span><span>${esc(c||'')}</span></div>`).join('')}</div>`;
+  }else if(q.type==='ox'){
+    body+=`<div class="preview-text">${esc(q.oxAnswer||'O')}</div>`;
+  }else if(q.answerType==='multiple'){
+    const idx=Math.max(0,Math.min(3,Number(q.correctChoice)||0));
+    const txt=String(q.choices[idx]||q.answer||'').trim();
+    if(media)body+=media;
+    body+=`<div class="preview-choice-answer"><span class="preview-answer-badge">${idx+1}</span><span class="preview-answer-choice-text">${esc(txt)}</span></div>`;
+  }else{
+    if(media)body+=media;
+    body+=`<div class="preview-text ${media?'with-image':''}">${esc(q.answer||'')}</div>`;
+  }
+  host.innerHTML=`<div class="preview-top"><span>4×4 BOARD</span><span>${adminIndex+1}번</span></div><div class="preview-body">${body}</div><div class="preview-score">${adminIndex+1}번</div>`;
+}
 
-async function exportPack(){try{toast('데이터팩을 만드는 중입니다…');saveAdminForm(false);const keys=await dbKeys(),blobs=[],media=[];let offset=0;for(const key of keys){const blob=await dbGet(key);if(!blob)continue;media.push({key:String(key),type:blob.type||'application/octet-stream',size:blob.size,offset});blobs.push(blob);offset+=blob.size}const manifest={app:APP,format:4,createdAt:new Date().toISOString(),state,media};const enc=new TextEncoder(),magic=enc.encode(PACK_MAGIC),header=enc.encode(JSON.stringify(manifest)),len=new Uint8Array(4);new DataView(len.buffer).setUint32(0,header.byteLength,true);const pack=new Blob([magic,len,header,...blobs],{type:'application/octet-stream'}),a=document.createElement('a');a.href=URL.createObjectURL(pack);a.download=`BibleGoldenBell_4X4_${dateStamp()}.bb4`;document.body.appendChild(a);a.click();const u=a.href;a.remove();setTimeout(()=>URL.revokeObjectURL(u),2000);toast('데이터팩 저장 완료')}catch(e){console.error(e);alert('데이터 저장 중 오류: '+e.message)}}
+
+function referencedMediaKeys(){
+  const set=new Set();
+  for(const q of state.questions||[]){
+    for(const key of Object.values(q.media||{})){
+      if(key && !/^data:|^https?:|^\//.test(key)) set.add(String(key));
+    }
+  }
+  return set;
+}
+async function pruneOrphanMedia(){
+  const keep=referencedMediaKeys();
+  const keys=await dbKeys();
+  for(const key of keys){
+    const k=String(key);
+    if(!keep.has(k)){
+      try{await dbDelete(k)}catch{}
+      revokeMedia(k);
+    }
+  }
+}
+
+async function exportPack(){try{toast('데이터팩을 만드는 중입니다…');saveAdminForm(false);await pruneOrphanMedia();const referenced=referencedMediaKeys(),keys=await dbKeys(),blobs=[],media=[];let offset=0;for(const key of keys){const sk=String(key);if(!referenced.has(sk))continue;const blob=await dbGet(key);if(!blob)continue;media.push({key:sk,type:blob.type||'application/octet-stream',size:blob.size,offset});blobs.push(blob);offset+=blob.size}const manifest={app:APP,format:4,createdAt:new Date().toISOString(),state,media};const enc=new TextEncoder(),magic=enc.encode(PACK_MAGIC),header=enc.encode(JSON.stringify(manifest)),len=new Uint8Array(4);new DataView(len.buffer).setUint32(0,header.byteLength,true);const pack=new Blob([magic,len,header,...blobs],{type:'application/octet-stream'}),a=document.createElement('a');a.href=URL.createObjectURL(pack);a.download=`BibleGoldenBell_4X4_${dateStamp()}.bb4`;document.body.appendChild(a);a.click();const u=a.href;a.remove();setTimeout(()=>URL.revokeObjectURL(u),2000);toast('데이터팩 저장 완료')}catch(e){console.error(e);alert('데이터 저장 중 오류: '+e.message)}}
 function chooseImport(){const inp=document.getElementById('importFile');inp.value='';inp.click()}
 document.getElementById('importFile').addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;try{await importPack(file);toast('데이터 불러오기 완료');currentView='home';render()}catch(err){console.error(err);alert('이 데이터 파일을 불러올 수 없습니다.\n'+err.message)}})
 async function importPack(file){const buf=await file.arrayBuffer(),u8=new Uint8Array(buf),enc=new TextEncoder(),magic=enc.encode(PACK_MAGIC);let match=u8.length>magic.length+4;for(let i=0;i<magic.length&&match;i++)if(u8[i]!==magic[i])match=false;if(match){const dv=new DataView(buf),headerLen=dv.getUint32(magic.length,true),hs=magic.length+4,he=hs+headerLen;if(he>buf.byteLength)throw new Error('데이터팩 헤더가 손상되었습니다.');const manifest=JSON.parse(new TextDecoder().decode(u8.slice(hs,he)));if(manifest.app!==APP)throw new Error('BibleGoldenBell 4X4 데이터가 아닙니다.');await dbClear();mediaUrlCache.forEach(URL.revokeObjectURL);mediaUrlCache.clear();for(const m of manifest.media||[]){const st=he+Number(m.offset||0),en=st+Number(m.size||0);if(st<he||en>buf.byteLength)throw new Error('미디어 데이터가 손상되었습니다.');await dbPut(m.key,new Blob([buf.slice(st,en)],{type:m.type||'application/octet-stream'}))}state=normalizeState(manifest.state);saveState();progress=defaultProgress();saveProgress();return}const txt=new TextDecoder().decode(u8),old=JSON.parse(txt),src=old.state||old;if(!src.questions)throw new Error('지원하지 않는 데이터 형식입니다.');state=normalizeState(src);saveState();progress=defaultProgress();saveProgress()}
