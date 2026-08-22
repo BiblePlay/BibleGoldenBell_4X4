@@ -701,6 +701,331 @@ button,input,textarea,select{font:inherit}button{cursor:pointer}button:focus-vis
   cursor:not-allowed;
 }
 
+
+/* ===== MOBILE PRESENTER READ-ONLY MODE 2026-08-23 ===== */
+.mobile-presenter-shell{
+  width:100%;
+  min-height:100dvh;
+  padding:0 14px 18px;
+  overflow-y:auto;
+  color:#f7f8fa;
+  background:#06111f;
+}
+.mobile-presenter-header{
+  position:sticky;
+  top:0;
+  z-index:20;
+  margin:0 -14px 14px;
+  padding:12px 14px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  border-bottom:1px solid #183453;
+  background:rgba(6,17,31,.96);
+  backdrop-filter:blur(10px);
+}
+.mobile-presenter-title{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  line-height:1.05;
+}
+.mobile-presenter-title span{
+  color:#9aa6b7;
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:.08em;
+}
+.mobile-presenter-title strong{
+  margin-top:3px;
+  color:#fff;
+  font-size:20px;
+  font-weight:950;
+}
+.mobile-presenter-settings,
+.mobile-presenter-back{
+  flex:0 0 auto;
+  min-height:40px;
+  padding:0 13px;
+  border:1px solid #315474;
+  border-radius:9px;
+  color:#fff;
+  background:#0b1b2f;
+  font-size:13px;
+  font-weight:900;
+}
+.mobile-presenter-settings:active,
+.mobile-presenter-back:active{transform:translateY(1px)}
+.mobile-presenter-note{
+  margin:0 0 12px;
+  padding:10px 12px;
+  border:1px solid #243f5c;
+  border-radius:9px;
+  color:#aeb8c7;
+  background:#091827;
+  font-size:12px;
+  line-height:1.45;
+}
+.mobile-presenter-board{
+  width:min(100%,560px);
+  margin:0 auto;
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:9px;
+}
+.mobile-presenter-cell{
+  min-width:0;
+  aspect-ratio:1/1;
+  display:grid;
+  place-items:center;
+  border:2px solid #21486d;
+  border-radius:12px;
+  color:#fff;
+  background:#0b1b2f;
+  font-size:clamp(26px,10vw,46px);
+  font-weight:950;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.02);
+}
+.mobile-presenter-cell:active{
+  border-color:#ff9000;
+  background:#13263a;
+}
+.mobile-presenter-cell.is-empty{
+  color:#697789;
+  border-color:#182f47;
+  background:#081522;
+}
+.mobile-presenter-question-shell{
+  width:100%;
+  min-height:100dvh;
+  display:flex;
+  flex-direction:column;
+  color:#fff;
+  background:#06111f;
+}
+.mobile-presenter-question-header{
+  position:sticky;
+  top:0;
+  z-index:20;
+  padding:10px 12px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  border-bottom:1px solid #183453;
+  background:rgba(6,17,31,.97);
+}
+.mobile-presenter-question-header .mobile-presenter-qno{
+  color:#ff9b18;
+  font-size:14px;
+  font-weight:950;
+}
+.mobile-presenter-content{
+  width:100%;
+  max-width:760px;
+  margin:0 auto;
+  padding:22px 16px 104px;
+  display:flex;
+  flex:1 1 auto;
+  flex-direction:column;
+  justify-content:center;
+  gap:16px;
+  overflow-y:auto;
+}
+.mobile-presenter-kicker{
+  color:#ff9b18;
+  font-size:12px;
+  font-weight:950;
+  letter-spacing:.08em;
+  text-align:center;
+}
+.mobile-presenter-hint{
+  align-self:center;
+  max-width:100%;
+  padding:7px 11px;
+  border:1px solid #274661;
+  border-radius:999px;
+  color:#b9c4d1;
+  background:#0b1b2f;
+  font-size:12px;
+  font-weight:800;
+  text-align:center;
+}
+.mobile-presenter-text{
+  width:100%;
+  color:#fff;
+  font-size:clamp(25px,7.2vw,42px);
+  line-height:1.28;
+  font-weight:900;
+  text-align:center;
+  white-space:pre-wrap;
+  word-break:keep-all;
+  overflow-wrap:anywhere;
+}
+.mobile-presenter-text.is-answer{
+  color:#fff7e7;
+}
+.mobile-presenter-media{
+  width:100%;
+  display:grid;
+  place-items:center;
+  border-radius:12px;
+  overflow:hidden;
+  background:#030b13;
+}
+.mobile-presenter-media img,
+.mobile-presenter-media video{
+  display:block;
+  width:100%;
+  max-height:58dvh;
+  object-fit:contain;
+  background:#030b13;
+}
+.mobile-presenter-media video{height:auto}
+.mobile-presenter-audio{
+  width:100%;
+  margin:0 auto;
+}
+.mobile-presenter-choices{
+  width:100%;
+  display:grid;
+  gap:9px;
+}
+.mobile-presenter-choice{
+  min-height:52px;
+  padding:10px 12px;
+  display:grid;
+  grid-template-columns:38px minmax(0,1fr);
+  align-items:center;
+  gap:10px;
+  border:1px solid #294864;
+  border-radius:10px;
+  background:#0a1928;
+}
+.mobile-presenter-choice-number{
+  width:34px;
+  height:34px;
+  display:grid;
+  place-items:center;
+  border-radius:50%;
+  color:#07111d;
+  background:#ff9b18;
+  font-size:16px;
+  font-weight:950;
+}
+.mobile-presenter-choice-text{
+  min-width:0;
+  color:#fff;
+  font-size:18px;
+  line-height:1.35;
+  font-weight:850;
+  white-space:pre-wrap;
+  word-break:keep-all;
+}
+.mobile-presenter-ox{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+.mobile-presenter-ox span{
+  min-height:82px;
+  display:grid;
+  place-items:center;
+  border:2px solid #294864;
+  border-radius:12px;
+  color:#fff;
+  background:#0a1928;
+  font-size:46px;
+  font-weight:950;
+}
+.mobile-presenter-ox-answer{
+  display:grid;
+  place-items:center;
+  min-height:220px;
+  color:#ff9b18;
+  font-size:clamp(150px,48vw,260px);
+  line-height:.9;
+  font-weight:950;
+}
+.mobile-presenter-multiple-answer{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:12px;
+  text-align:left;
+}
+.mobile-presenter-multiple-answer .mobile-presenter-answer-badge{
+  width:52px;
+  height:52px;
+  flex:0 0 52px;
+  display:grid;
+  place-items:center;
+  border-radius:50%;
+  color:#07111d;
+  background:#ff9b18;
+  font-size:23px;
+  font-weight:950;
+}
+.mobile-presenter-multiple-answer .mobile-presenter-answer-text{
+  min-width:0;
+  color:#fff;
+  font-size:clamp(24px,6.8vw,40px);
+  line-height:1.25;
+  font-weight:900;
+  white-space:pre-wrap;
+  word-break:keep-all;
+}
+.mobile-presenter-bottom{
+  position:fixed;
+  left:0;
+  right:0;
+  bottom:0;
+  z-index:25;
+  padding:10px 14px max(10px,env(safe-area-inset-bottom));
+  border-top:1px solid #183453;
+  background:rgba(6,17,31,.97);
+  backdrop-filter:blur(10px);
+}
+.mobile-presenter-answer-toggle{
+  width:100%;
+  min-height:52px;
+  border:0;
+  border-radius:11px;
+  color:#111;
+  background:#ff9000;
+  font-size:17px;
+  font-weight:950;
+}
+.mobile-presenter-empty-message{
+  padding:26px 16px;
+  color:#8995a5;
+  font-size:16px;
+  line-height:1.5;
+  text-align:center;
+}
+
+/* Existing admin remains the same on desktop/TV.
+   Only make that same admin screen usable on a phone. */
+@media (max-width:1024px) and (pointer:coarse){
+  .admin-scroll-area{padding:10px}
+  .admin-panel{padding:14px;border-radius:10px}
+  .admin-header{flex-direction:column;gap:12px;margin-bottom:16px}
+  .admin-header h1{font-size:30px}
+  .admin-header-actions{width:100%;flex-wrap:wrap}
+  .admin-header-actions .admin-secondary-button{flex:1 1 auto;justify-content:center}
+  .admin-layout{grid-template-columns:1fr;gap:14px}
+  .admin-nav{padding:12px}
+  .admin-workspace{grid-template-columns:1fr;gap:14px}
+  .admin-preview{position:relative;top:auto;max-width:none;max-height:none}
+  .admin-form-grid{grid-template-columns:1fr}
+  .media-grid{grid-template-columns:1fr}
+  .topbar{padding:0 10px}
+  .brand{font-size:13px}
+  .topbar-actions{gap:4px}
+  .icon-button{width:32px;height:32px}
+}
+
 </style>
 <!-- FINAL-media-cleanup-2026-08-22 -->
 <!-- FINAL-adaptive-question-size-v2-2026-08-22 -->
@@ -713,6 +1038,7 @@ button,input,textarea,select{font:inherit}button{cursor:pointer}button:focus-vis
 <!-- BibleGoldenBell_4X4 FINAL TEXTAREA + TEXT FIT 2026-08-23 -->
 <!-- BibleGoldenBell_4X4 FINAL MINI TEAM EDITOR + THIN BLANKS 2026-08-23 -->
 <!-- BibleGoldenBell_4X4 FINAL BINGO + MINI CORRECTION 2026-08-23 -->
+<!-- BibleGoldenBell_4X4 FINAL MOBILE PRESENTER READ-ONLY 2026-08-23 -->
 </head>
 <body>
 <div id="app"></div>
@@ -731,7 +1057,7 @@ const LOGO_DATA='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAWEAAADqCAYAAABz/
 const TYPE_LABELS={general:'일반·초성·빈칸',ox:'OX',image:'그림퀴즈',person:'인물퀴즈',video:'영상퀴즈',hidden:'숨은그림찾기'};
 const ANSWER_LABELS={short:'단답형',multiple:'4지선다'};
 const TEAM_META={1:{name:'1팀',color:'#f4a11a'},2:{name:'2팀',color:'#4e9be8'},3:{name:'3팀',color:'#8f7ee8'}};
-let adminIndex=0,adminPreviewMode='question',answerVisible=false,currentView='home',currentQuestion=0,autosaveTimer=null,miniEditSelection='1';
+let adminIndex=0,adminPreviewMode='question',answerVisible=false,currentView='home',currentQuestion=0,autosaveTimer=null,miniEditSelection='1',mobilePreviewIndex=null,mobilePreviewAnswerVisible=false;
 const mediaUrlCache=new Map();
 
 function emptyQuestion(n){return {number:n,type:'general',answerType:'short',question:'',answer:'',hint:'',choices:['','','',''],correctChoice:0,oxAnswer:'O',hiddenShowText:false,audioPlayback:'manual',answerAudioPlayback:'manual',videoPlayback:'manual',answerVideoPlayback:'manual',questionMediaLayout:'full',answerMediaLayout:'full',media:{questionImage:null,answerImage:null,video:null,answerVideo:null,audio:null,answerAudio:null},mediaNames:{}}}
@@ -827,7 +1153,143 @@ async function dbKeys(){const db=await openDb();return new Promise((res,rej)=>{c
 function revokeMedia(key){if(mediaUrlCache.has(key)){URL.revokeObjectURL(mediaUrlCache.get(key));mediaUrlCache.delete(key)}}
 async function mediaUrl(ref){if(!ref)return null;if(/^data:|^blob:|^https?:|^\//.test(ref))return ref;if(mediaUrlCache.has(ref))return mediaUrlCache.get(ref);const b=await dbGet(ref);if(!b)return null;const u=URL.createObjectURL(b);mediaUrlCache.set(ref,u);return u}
 
-function render(){if(currentView==='home')renderHome();else if(currentView==='admin')renderAdmin();else renderQuestion(currentQuestion)}
+function isMobilePresenterDevice(){
+  return window.matchMedia('(max-width:1024px)').matches &&
+    (navigator.maxTouchPoints>0 || window.matchMedia('(pointer:coarse)').matches);
+}
+function render(){
+  if(currentView==='admin'){renderAdmin();return}
+  if(currentView==='mobile-preview'){renderMobilePresenterQuestion();return}
+  if(currentView==='home'&&isMobilePresenterDevice()){renderMobilePresenterBoard();return}
+  if(currentView==='home'){renderHome();return}
+  renderQuestion(currentQuestion);
+}
+
+
+function mobileQuestionHasContent(q){
+  return !!(
+    String(q.question||'').trim() ||
+    String(q.answer||'').trim() ||
+    (q.choices||[]).some(c=>String(c||'').trim()) ||
+    Object.values(q.media||{}).some(Boolean)
+  );
+}
+
+function renderMobilePresenterBoard(){
+  mobilePreviewIndex=null;
+  mobilePreviewAnswerVisible=false;
+
+  const cells=state.questions.map((q,i)=>{
+    const filled=mobileQuestionHasContent(q);
+    return `<button class="mobile-presenter-cell ${filled?'':'is-empty'}" data-mobile-preview="${i}" aria-label="${i+1}번 문제 미리보기">${i+1}</button>`;
+  }).join('');
+
+  const hasAny=state.questions.some(mobileQuestionHasContent);
+
+  document.getElementById('app').innerHTML=`<main class="mobile-presenter-shell">
+    <header class="mobile-presenter-header">
+      <div class="mobile-presenter-title"><span>진행자 미리보기</span><strong>도전 바이블 골든벨</strong></div>
+      <button class="mobile-presenter-settings" id="mobileSettings">⚙ 설정</button>
+    </header>
+    ${hasAny?'':`<p class="mobile-presenter-note">문제가 아직 없습니다. 위의 설정에서 관리자 모드로 들어가 데이터팩을 불러오세요.</p>`}
+    <section class="mobile-presenter-board">${cells}</section>
+  </main>`;
+
+  document.getElementById('mobileSettings').addEventListener('click',()=>{
+    currentView='admin';
+    render();
+  });
+
+  document.querySelectorAll('[data-mobile-preview]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      mobilePreviewIndex=Number(btn.dataset.mobilePreview);
+      mobilePreviewAnswerVisible=false;
+      currentView='mobile-preview';
+      render();
+    });
+  });
+}
+
+async function renderMobilePresenterQuestion(){
+  const i=Number.isInteger(mobilePreviewIndex)?mobilePreviewIndex:0;
+  const q=state.questions[i]||emptyQuestion(i+1);
+
+  const qImg=await mediaUrl(q.media.questionImage);
+  const aImg=await mediaUrl(q.media.answerImage);
+  const qVideo=await mediaUrl(q.media.video);
+  const aVideo=await mediaUrl(q.media.answerVideo);
+  const qAudio=await mediaUrl(q.media.audio);
+  const aAudio=await mediaUrl(q.media.answerAudio);
+
+  let body='';
+
+  if(!mobilePreviewAnswerVisible){
+    if(q.hint) body+=`<div class="mobile-presenter-hint">힌트 · ${displayText(q.hint)}</div>`;
+
+    const useVideo=!!qVideo&&(q.type==='video'||!qImg);
+    const useImage=!!qImg&&!useVideo;
+
+    if(useVideo) body+=`<div class="mobile-presenter-media"><video src="${qVideo}" controls playsinline preload="metadata"></video></div>`;
+    else if(useImage) body+=`<div class="mobile-presenter-media"><img src="${qImg}" alt="문제 이미지"></div>`;
+
+    if(q.type!=='hidden'||q.hiddenShowText){
+      body+=`<div class="mobile-presenter-text">${displayText(q.question||'')}</div>`;
+    }
+
+    if(q.type==='ox'){
+      body+=`<div class="mobile-presenter-ox"><span>O</span><span>X</span></div>`;
+    }else if(q.answerType==='multiple'){
+      body+=`<div class="mobile-presenter-choices">${q.choices.map((c,idx)=>`<div class="mobile-presenter-choice"><span class="mobile-presenter-choice-number">${idx+1}</span><span class="mobile-presenter-choice-text">${displayText(c||'')}</span></div>`).join('')}</div>`;
+    }
+
+    if(qAudio) body+=`<audio class="mobile-presenter-audio" src="${qAudio}" controls preload="metadata"></audio>`;
+  }else{
+    if(aVideo) body+=`<div class="mobile-presenter-media"><video src="${aVideo}" controls playsinline preload="metadata"></video></div>`;
+    else if(aImg) body+=`<div class="mobile-presenter-media"><img src="${aImg}" alt="정답 이미지"></div>`;
+
+    if(q.type==='ox'){
+      body+=`<div class="mobile-presenter-ox-answer">${esc(q.oxAnswer||'O')}</div>`;
+    }else if(q.answerType==='multiple'){
+      const idx=Math.max(0,Math.min(3,Number(q.correctChoice)||0));
+      const txt=String(q.choices[idx]||q.answer||'').trim();
+      body+=`<div class="mobile-presenter-multiple-answer"><span class="mobile-presenter-answer-badge">${idx+1}</span><span class="mobile-presenter-answer-text">${displayText(txt)}</span></div>`;
+    }else{
+      body+=`<div class="mobile-presenter-text is-answer">${displayText(q.answer||'')}</div>`;
+    }
+
+    if(aAudio) body+=`<audio class="mobile-presenter-audio" src="${aAudio}" controls preload="metadata"></audio>`;
+  }
+
+  if(!body.trim()){
+    body=`<div class="mobile-presenter-empty-message">${mobilePreviewAnswerVisible?'정답이 등록되지 않았습니다.':'문제가 등록되지 않았습니다.'}</div>`;
+  }
+
+  document.getElementById('app').innerHTML=`<main class="mobile-presenter-question-shell">
+    <header class="mobile-presenter-question-header">
+      <button class="mobile-presenter-back" id="mobileBackToBoard">← 문제판</button>
+      <span class="mobile-presenter-qno">${i+1}번 · ${mobilePreviewAnswerVisible?'정답':'문제'}</span>
+    </header>
+    <section class="mobile-presenter-content">
+      <div class="mobile-presenter-kicker">${mobilePreviewAnswerVisible?'ANSWER':'QUESTION'}</div>
+      ${body}
+    </section>
+    <div class="mobile-presenter-bottom">
+      <button class="mobile-presenter-answer-toggle" id="mobileAnswerToggle">${mobilePreviewAnswerVisible?'문제 다시 보기':'정답 보기'}</button>
+    </div>
+  </main>`;
+
+  document.getElementById('mobileBackToBoard').addEventListener('click',()=>{
+    mobilePreviewIndex=null;
+    mobilePreviewAnswerVisible=false;
+    currentView='home';
+    render();
+  });
+
+  document.getElementById('mobileAnswerToggle').addEventListener('click',()=>{
+    mobilePreviewAnswerVisible=!mobilePreviewAnswerVisible;
+    renderMobilePresenterQuestion();
+  });
+}
 
 const BINGO_LINES=[
   [0,1,2,3],[4,5,6,7],[8,9,10,11],[12,13,14,15],
@@ -1401,7 +1863,7 @@ async function renderQuestion(i){
 
 function renderAdmin(){
   currentView='admin';const q=state.questions[adminIndex];const slots=state.questions.map((x,i)=>`<button class="${i===adminIndex?'is-selected ':''}${questionFilled(x)?'is-filled':''}" data-admin-num="${i}"><strong>${i+1}</strong></button>`).join('');
-  document.getElementById('app').innerHTML=`<div class="admin-shell">${commonTopbar()}<main class="admin-scroll-area"><section class="admin-panel"><header class="admin-header"><div><span class="kicker">ADMIN</span><h1>16문제 관리</h1><p>1번부터 16번까지 각 문제의 유형과 내용을 직접 설정합니다.</p></div><div class="admin-header-actions"><button class="admin-secondary-button" id="exportBtn">⇩ 내보내기</button><button class="admin-secondary-button" id="importBtn">☁ 불러오기</button><button class="admin-secondary-button" id="eventBtn">← 행사 화면</button></div></header><div class="admin-layout"><aside class="admin-nav"><div class="admin-nav-kicker">4×4 BOARD</div><div class="admin-nav-title">16문제</div><div class="admin-slot-label">문제 번호</div><div class="admin-slots">${slots}</div></aside><form class="admin-form" id="adminForm"><div class="admin-form-title">${adminIndex+1}번 문제</div><div class="admin-workspace"><div class="admin-editor"><div class="admin-form-grid"><label class="admin-field"><span>문제 유형</span><select id="qType">${Object.entries(TYPE_LABELS).map(([v,l])=>`<option value="${v}" ${q.type===v?'selected':''}>${l}</option>`).join('')}</select></label><label class="admin-field" id="answerTypeField"><span>답변 방식</span><select id="answerType"><option value="short" ${q.answerType==='short'?'selected':''}>단답형</option><option value="multiple" ${q.answerType==='multiple'?'selected':''}>4지선다</option></select></label></div><div id="hiddenOption"></div><label class="admin-field full"><span>문제</span><textarea id="qText">${esc(q.question)}</textarea></label><div id="choicesHost"></div><label class="admin-field full" id="answerTextField"><span>정답</span><textarea id="qAnswer" rows="5">${esc(q.answer)}</textarea></label><label class="admin-field full"><span>힌트 (선택)</span><input id="qHint" value="${displayText(q.hint)}" placeholder="필요한 문제에만 입력하세요."></label><div class="media-grid">${mediaCard(q,'questionImage','문제 이미지','image/*')}${mediaCard(q,'answerImage','정답 이미지','image/*')}${mediaCard(q,'video','문제 동영상','video/*')}${mediaCard(q,'answerVideo','정답 동영상','video/*')}${mediaCard(q,'audio','문제 음성','audio/*')}${mediaCard(q,'answerAudio','정답 음성','audio/*')}</div><div class="media-layout-options"><span>문제 미디어 크기</span><label><input type="radio" name="questionMediaLayout" value="full" ${q.questionMediaLayout!=='compact'?'checked':''}> 크게</label><label><input type="radio" name="questionMediaLayout" value="compact" ${q.questionMediaLayout==='compact'?'checked':''}> 작게 · 글자 중심</label></div><div class="media-layout-options"><span>정답 미디어 크기</span><label><input type="radio" name="answerMediaLayout" value="full" ${q.answerMediaLayout!=='compact'?'checked':''}> 크게</label><label><input type="radio" name="answerMediaLayout" value="compact" ${q.answerMediaLayout==='compact'?'checked':''}> 작게 · 글자 중심</label></div><div class="audio-options"><span>문제 동영상 재생</span><label><input type="radio" name="videoPlayback" value="manual" ${q.videoPlayback!=='auto'?'checked':''}> 수동</label><label><input type="radio" name="videoPlayback" value="auto" ${q.videoPlayback==='auto'?'checked':''}> 자동재생</label></div><div class="audio-options"><span>정답 동영상 재생</span><label><input type="radio" name="answerVideoPlayback" value="manual" ${q.answerVideoPlayback!=='auto'?'checked':''}> 수동</label><label><input type="radio" name="answerVideoPlayback" value="auto" ${q.answerVideoPlayback==='auto'?'checked':''}> 자동재생</label></div><div class="audio-options"><span>문제 음성 재생</span><label><input type="radio" name="audioPlayback" value="manual" ${q.audioPlayback!=='auto'?'checked':''}> 수동</label><label><input type="radio" name="audioPlayback" value="auto" ${q.audioPlayback==='auto'?'checked':''}> 자동재생</label></div><div class="audio-options"><span>정답 음성 재생</span><label><input type="radio" name="answerAudioPlayback" value="manual" ${q.answerAudioPlayback!=='auto'?'checked':''}> 수동</label><label><input type="radio" name="answerAudioPlayback" value="auto" ${q.answerAudioPlayback==='auto'?'checked':''}> 자동재생</label></div><footer class="admin-form-footer"><div class="left-actions"><button type="button" class="clear-btn" id="clearQuestion">이 문제 초기화</button></div><span class="autosave-note" id="autosaveNote">변경 내용 자동 저장</span><button type="submit" class="save-btn">저장</button></footer></div><aside class="admin-preview"><div class="preview-head"><strong>실제 화면 미리보기</strong><div class="preview-tabs"><button type="button" class="preview-tab ${adminPreviewMode==='question'?'active':''}" data-preview-mode="question">문제</button><button type="button" class="preview-tab ${adminPreviewMode==='answer'?'active':''}" data-preview-mode="answer">정답</button></div></div><div class="preview-screen" id="previewScreen"></div></aside></div></form></div></section></main></div>`;
+  document.getElementById('app').innerHTML=`<div class="admin-shell">${commonTopbar()}<main class="admin-scroll-area"><section class="admin-panel"><header class="admin-header"><div><span class="kicker">ADMIN</span><h1>16문제 관리</h1><p>1번부터 16번까지 각 문제의 유형과 내용을 직접 설정합니다.</p></div><div class="admin-header-actions"><button class="admin-secondary-button" id="exportBtn">⇩ 내보내기</button><button class="admin-secondary-button" id="importBtn">☁ 불러오기</button><button class="admin-secondary-button" id="eventBtn">${isMobilePresenterDevice()?'← 문제판':'← 행사 화면'}</button></div></header><div class="admin-layout"><aside class="admin-nav"><div class="admin-nav-kicker">4×4 BOARD</div><div class="admin-nav-title">16문제</div><div class="admin-slot-label">문제 번호</div><div class="admin-slots">${slots}</div></aside><form class="admin-form" id="adminForm"><div class="admin-form-title">${adminIndex+1}번 문제</div><div class="admin-workspace"><div class="admin-editor"><div class="admin-form-grid"><label class="admin-field"><span>문제 유형</span><select id="qType">${Object.entries(TYPE_LABELS).map(([v,l])=>`<option value="${v}" ${q.type===v?'selected':''}>${l}</option>`).join('')}</select></label><label class="admin-field" id="answerTypeField"><span>답변 방식</span><select id="answerType"><option value="short" ${q.answerType==='short'?'selected':''}>단답형</option><option value="multiple" ${q.answerType==='multiple'?'selected':''}>4지선다</option></select></label></div><div id="hiddenOption"></div><label class="admin-field full"><span>문제</span><textarea id="qText">${esc(q.question)}</textarea></label><div id="choicesHost"></div><label class="admin-field full" id="answerTextField"><span>정답</span><textarea id="qAnswer" rows="5">${esc(q.answer)}</textarea></label><label class="admin-field full"><span>힌트 (선택)</span><input id="qHint" value="${displayText(q.hint)}" placeholder="필요한 문제에만 입력하세요."></label><div class="media-grid">${mediaCard(q,'questionImage','문제 이미지','image/*')}${mediaCard(q,'answerImage','정답 이미지','image/*')}${mediaCard(q,'video','문제 동영상','video/*')}${mediaCard(q,'answerVideo','정답 동영상','video/*')}${mediaCard(q,'audio','문제 음성','audio/*')}${mediaCard(q,'answerAudio','정답 음성','audio/*')}</div><div class="media-layout-options"><span>문제 미디어 크기</span><label><input type="radio" name="questionMediaLayout" value="full" ${q.questionMediaLayout!=='compact'?'checked':''}> 크게</label><label><input type="radio" name="questionMediaLayout" value="compact" ${q.questionMediaLayout==='compact'?'checked':''}> 작게 · 글자 중심</label></div><div class="media-layout-options"><span>정답 미디어 크기</span><label><input type="radio" name="answerMediaLayout" value="full" ${q.answerMediaLayout!=='compact'?'checked':''}> 크게</label><label><input type="radio" name="answerMediaLayout" value="compact" ${q.answerMediaLayout==='compact'?'checked':''}> 작게 · 글자 중심</label></div><div class="audio-options"><span>문제 동영상 재생</span><label><input type="radio" name="videoPlayback" value="manual" ${q.videoPlayback!=='auto'?'checked':''}> 수동</label><label><input type="radio" name="videoPlayback" value="auto" ${q.videoPlayback==='auto'?'checked':''}> 자동재생</label></div><div class="audio-options"><span>정답 동영상 재생</span><label><input type="radio" name="answerVideoPlayback" value="manual" ${q.answerVideoPlayback!=='auto'?'checked':''}> 수동</label><label><input type="radio" name="answerVideoPlayback" value="auto" ${q.answerVideoPlayback==='auto'?'checked':''}> 자동재생</label></div><div class="audio-options"><span>문제 음성 재생</span><label><input type="radio" name="audioPlayback" value="manual" ${q.audioPlayback!=='auto'?'checked':''}> 수동</label><label><input type="radio" name="audioPlayback" value="auto" ${q.audioPlayback==='auto'?'checked':''}> 자동재생</label></div><div class="audio-options"><span>정답 음성 재생</span><label><input type="radio" name="answerAudioPlayback" value="manual" ${q.answerAudioPlayback!=='auto'?'checked':''}> 수동</label><label><input type="radio" name="answerAudioPlayback" value="auto" ${q.answerAudioPlayback==='auto'?'checked':''}> 자동재생</label></div><footer class="admin-form-footer"><div class="left-actions"><button type="button" class="clear-btn" id="clearQuestion">이 문제 초기화</button></div><span class="autosave-note" id="autosaveNote">변경 내용 자동 저장</span><button type="submit" class="save-btn">저장</button></footer></div><aside class="admin-preview"><div class="preview-head"><strong>실제 화면 미리보기</strong><div class="preview-tabs"><button type="button" class="preview-tab ${adminPreviewMode==='question'?'active':''}" data-preview-mode="question">문제</button><button type="button" class="preview-tab ${adminPreviewMode==='answer'?'active':''}" data-preview-mode="answer">정답</button></div></div><div class="preview-screen" id="previewScreen"></div></aside></div></form></div></section></main></div>`;
   wireCommonTopbar();document.querySelectorAll('[data-admin-num]').forEach(b=>b.addEventListener('click',()=>{saveAdminForm(false);adminIndex=Number(b.dataset.adminNum);adminPreviewMode='question';renderAdmin()}));document.getElementById('eventBtn').addEventListener('click',()=>{saveAdminForm(false);currentView='home';render()});document.getElementById('exportBtn').addEventListener('click',()=>{saveAdminForm(false);exportPack()});document.getElementById('importBtn').addEventListener('click',chooseImport);document.getElementById('adminForm').addEventListener('submit',e=>{e.preventDefault();saveAdminForm(true)});document.getElementById('clearQuestion').addEventListener('click',clearAdminQuestion);document.getElementById('qType').addEventListener('change',handleQuestionTypeChange);document.getElementById('answerType')?.addEventListener('change',()=>{syncAdminDynamic();queueAutosave()});['qText','qAnswer','qHint'].forEach(id=>document.getElementById(id)?.addEventListener('input',queueAutosave));document.querySelectorAll('input[name="questionMediaLayout"],input[name="answerMediaLayout"],input[name="videoPlayback"],input[name="answerVideoPlayback"],input[name="audioPlayback"],input[name="answerAudioPlayback"]').forEach(x=>x.addEventListener('change',queueAutosave));document.querySelectorAll('[data-preview-mode]').forEach(b=>b.addEventListener('click',()=>{adminPreviewMode=b.dataset.previewMode;document.querySelectorAll('[data-preview-mode]').forEach(x=>x.classList.toggle('active',x.dataset.previewMode===adminPreviewMode));updatePreview()}));syncAdminDynamic();wireMediaCards();updatePreview();
 }
 
