@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#06111f">
-<title>BibleGoldenBell 4X4 · Remote Test v2</title>
+<title>BibleGoldenBell 4X4 · Remote Test v3</title>
 <style>
 :root{
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR","Apple SD Gothic Neo",sans-serif;
@@ -78,7 +78,7 @@ body{display:flex;flex-direction:column}
 <body>
 
 <header class="remote-bar">
-  <div class="remote-brand">도전 바이블 <b>원격 테스트 v2</b></div>
+  <div class="remote-brand">도전 바이블 <b>원격 테스트 v3</b></div>
 
   <label class="remote-field">역할
     <select id="role">
@@ -226,11 +226,6 @@ function controllerReady(show=true){
     if(show)status(`${room} · 방송 화면 대기 중`,'warn');
     return false;
   }
-  const mine=packFingerprint();
-  if(displayState.packFingerprint!==mine){
-    if(show)status(`${room} · 문제팩 불일치 (${mine}/${displayState.packFingerprint})`,'bad');
-    return false;
-  }
   return true;
 }
 
@@ -297,13 +292,6 @@ async function goBoard(){
 async function applyCommand(cmd){
   if(!cmd)return;
 
-  const mine=packFingerprint();
-  if(cmd.packFingerprint!==mine){
-    status(`${room} · 문제팩 불일치 명령 무시`,'bad');
-    await publishDisplayState(true);
-    return;
-  }
-
   if(cmd.action==='OPEN_QUESTION'){
     const index=Math.max(0,Math.min(15,Number(cmd.payload?.index)||0));
     await goBoard();
@@ -336,7 +324,7 @@ function startPolling(){
       if(displayState.packFingerprint===mine){
         status(`${room} · 방송 화면 연결됨 · 문제팩 일치`,'ok');
       }else{
-        status(`${room} · 문제팩 불일치 (${mine}/${displayState.packFingerprint})`,'bad');
+        status(`${room} · 방송 화면 연결됨 · 문제팩 확인 경고(테스트 계속 가능)`,'warn');
       }
       updateControllerPanel();
     }
@@ -403,7 +391,7 @@ async function attach(){
         if(!displayState){
           status(`${room} · 방송 화면 대기 중`,'warn');
         }else if(displayState.packFingerprint!==packFingerprint()){
-          status(`${room} · 문제팩 불일치 (${packFingerprint()}/${displayState.packFingerprint})`,'bad');
+          status(`${room} · 방송 화면 연결됨 · 문제팩 확인 경고(테스트 계속 가능)`,'warn');
         }else{
           status(`${room} · 방송 화면 연결됨 · 문제팩 일치`,'ok');
         }
