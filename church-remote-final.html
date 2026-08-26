@@ -2226,18 +2226,8 @@ function frag(){
   return {
     role:p.get('role')||'',
     room:p.get('room')||'',
-    key:p.get('key')||'',
-    ownerKey:p.get('ownerKey')||''
+    key:p.get('key')||''
   };
-}
-function consumePrivateOwnerKey(){
-  const f=frag();
-  if(!f.ownerKey)return false;
-  localStorage.setItem(OWNER_KEY_STORE,f.ownerKey.trim());
-  const clean=new URL(location.href);
-  clean.hash='';
-  history.replaceState(null,'',clean.pathname+clean.search);
-  return true;
 }
 function isControllerContext(){
   const f=frag();
@@ -2263,9 +2253,13 @@ function mountUi(){
     <h3 id="bb4RemoteTitle">교회 원격 진행</h3>
     <p id="bb4RemoteDesc">기존 4×4 화면은 그대로 사용하고, 휴대폰에서는 문제·정답·팀 색만 원격으로 조작합니다.</p>
     <div id="bb4OwnerKeyWrap" style="margin:0 0 12px">
-      <div style="padding:10px 12px;border:1px solid #315a80;border-radius:10px;background:#0a1b2c;color:#dfe9f5;font-size:12px;font-weight:850;line-height:1.5">
-        이 방송 기기에는 아직 관리자 키가 저장되지 않았습니다.<br>
-        <span style="color:#9db0c5;font-weight:700">관리자 전용 링크로 한 번 접속하면 자동 저장됩니다.</span>
+      <button id="bb4OwnerKeyFileBtn" type="button"
+        style="width:100%;min-height:44px;border:1px solid #ff9000;border-radius:10px;background:#ff9000;color:#07111d;font-size:13px;font-weight:950;cursor:pointer">
+        이 방송실 기기 관리자 등록
+      </button>
+      <input id="bb4OwnerKeyFile" type="file" accept=".bb4remote-key,.json,text/plain,application/json" hidden>
+      <div style="margin-top:6px;color:#8fa2b7;font-size:10px;line-height:1.4">
+        처음 한 번만 비공개 관리자 등록 파일을 선택합니다. 등록 후에는 이 버튼이 사라지고 평소 주소만 사용합니다.
       </div>
     </div>
     <div class="bb4-remote-status" id="bb4RemotePanelStatus">연결되지 않았습니다.</div>
@@ -2290,6 +2284,25 @@ function mountUi(){
   panel.addEventListener('click',e=>{if(e.target===panel)panel.classList.remove('is-open')});
   document.getElementById('bb4RemoteClose').addEventListener('click',()=>panel.classList.remove('is-open'));
   document.getElementById('bb4RemoteConnectDisplay').addEventListener('click',()=>connectDisplay(false));
+  const ownerFileBtn=document.getElementById('bb4OwnerKeyFileBtn');
+  const ownerFileInput=document.getElementById('bb4OwnerKeyFile');
+  ownerFileBtn.addEventListener('click',()=>ownerFileInput.click());
+  ownerFileInput.addEventListener('change',async()=>{
+    const file=ownerFileInput.files?.[0];
+    if(!file)return;
+    try{
+      await importOwnerKeyFile(file);
+      syncOwnerKeyUi();
+      panelStatus('이 방송실 기기가 관리자 기기로 등록되었습니다. 이제 “방송 화면 원격 연결”을 누르세요.');
+      toast('관리자 등록이 완료되었습니다.');
+    }catch(err){
+      console.error(err);
+      panelStatus('관리자 등록 파일을 읽지 못했습니다. 올바른 비공개 등록 파일을 선택하세요.');
+      toast('관리자 등록에 실패했습니다.');
+    }finally{
+      ownerFileInput.value='';
+    }
+  });
 
 
   document.getElementById('bb4RemoteCopy').addEventListener('click',copyControllerLink);
@@ -2348,6 +2361,20 @@ async function ensureAuth(){
   await fb.authMod.setPersistence(auth,fb.authMod.browserLocalPersistence);
   const result=await fb.authMod.signInAnonymously(auth);
   user=result.user;return user;
+}
+async function importOwnerKeyFile(file){
+  if(!file)throw new Error('NO_OWNER_FILE');
+  const text=(await file.text()).trim();
+  let key='';
+  try{
+    const data=JSON.parse(text);
+    key=String(data?.ownerKey||data?.key||'').trim();
+  }catch{
+    key=text;
+  }
+  if(!key||key.length<20)throw new Error('INVALID_OWNER_FILE');
+  localStorage.setItem(OWNER_KEY_STORE,key);
+  return true;
 }
 function ownerKey(){
   const stored=(localStorage.getItem(OWNER_KEY_STORE)||'').trim();
@@ -2431,7 +2458,7 @@ async function connectDisplay(auto){
     const msg=String(err?.code||err?.message||'');
     if(msg.includes('operation-not-allowed'))panelStatus('Firebase Authentication에서 익명 로그인을 먼저 켜야 합니다.');
     else if(msg.includes('permission-denied'))panelStatus('관리자 키 또는 Firebase Security Rules가 맞지 않습니다.');
-    else if(msg.includes('NO_OWNER_KEY'))panelStatus('관리자 전용 링크로 한 번 접속해 관리자 키를 자동 저장한 뒤 다시 연결하세요.');
+    else if(msg.includes('NO_OWNER_KEY'))panelStatus('먼저 “이 방송실 기기 관리자 등록”을 눌러 비공개 등록 파일을 한 번 선택하세요.');
     else panelStatus('원격 연결에 실패했습니다. Firebase 설정을 확인하세요.');
     badgeState('원격 오류','is-bad');setPanelButtons();
   }
@@ -2651,11 +2678,6 @@ function installControllerEvents(){
 }
 
 mountUi();
-const ownerKeyImported=consumePrivateOwnerKey();
-if(ownerKeyImported){
-  panelStatus('관리자 키가 이 방송 기기에 자동 저장되었습니다. 이제 원격 연결을 사용할 수 있습니다.');
-  toast('관리자 키를 자동 저장했습니다.');
-}
 try{
   await loadFirebase();
   if(isControllerContext()){
