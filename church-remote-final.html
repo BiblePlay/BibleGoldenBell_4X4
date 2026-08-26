@@ -2251,8 +2251,10 @@ function mountUi(){
     <div id="bb4OwnerKeyWrap" style="margin:0 0 12px">
       <label for="bb4OwnerKeyInput" style="display:block;margin:0 0 6px;color:#dfe9f5;font-size:12px;font-weight:900">교회 원격 관리자 키</label>
       <div style="display:flex;gap:7px">
-        <input id="bb4OwnerKeyInput" type="password" autocomplete="off" placeholder="관리자 키 붙여넣기"
+        <input id="bb4OwnerKeyInput" type="text" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="관리자 키 붙여넣기"
           style="flex:1;min-width:0;height:42px;border:1px solid #315a80;border-radius:10px;background:#0a1b2c;color:#fff;padding:0 11px;font-size:13px;outline:none">
+        <button id="bb4OwnerKeyPaste" type="button"
+          style="height:42px;padding:0 12px;border:1px solid #315a80;border-radius:10px;background:#10253b;color:#fff;font-size:12px;font-weight:900;cursor:pointer">붙여넣기</button>
         <button id="bb4OwnerKeySave" type="button"
           style="height:42px;padding:0 13px;border:1px solid #ff9000;border-radius:10px;background:#ff9000;color:#07111d;font-size:12px;font-weight:950;cursor:pointer">저장</button>
       </div>
@@ -2280,6 +2282,22 @@ function mountUi(){
   panel.addEventListener('click',e=>{if(e.target===panel)panel.classList.remove('is-open')});
   document.getElementById('bb4RemoteClose').addEventListener('click',()=>panel.classList.remove('is-open'));
   document.getElementById('bb4RemoteConnectDisplay').addEventListener('click',()=>connectDisplay(false));
+  document.getElementById('bb4OwnerKeyPaste').addEventListener('click',async()=>{
+    const input=document.getElementById('bb4OwnerKeyInput');
+    try{
+      const text=(await navigator.clipboard.readText()).trim();
+      if(!text){toast('클립보드에 복사된 키가 없습니다.');return}
+      input.value=text;
+      input.focus();
+      toast('관리자 키를 붙여넣었습니다.');
+    }catch(err){
+      console.warn(err);
+      input.focus();
+      input.select();
+      panelStatus('자동 붙여넣기가 차단되었습니다. 입력칸을 길게 눌러 “붙여넣기”를 선택하세요.');
+      toast('입력칸을 길게 눌러 붙여넣으세요.');
+    }
+  });
   document.getElementById('bb4OwnerKeySave').addEventListener('click',()=>{
     const input=(document.getElementById('bb4OwnerKeyInput')?.value||'').trim();
     if(!input){toast('관리자 키를 붙여넣어 주세요.');return}
