@@ -2249,16 +2249,13 @@ function mountUi(){
     <h3 id="bb4RemoteTitle">교회 원격 진행</h3>
     <p id="bb4RemoteDesc">기존 4×4 화면은 그대로 사용하고, 휴대폰에서는 문제·정답·팀 색만 원격으로 조작합니다.</p>
     <div id="bb4OwnerKeyWrap" style="margin:0 0 12px">
-      <label for="bb4OwnerKeyInput" style="display:block;margin:0 0 6px;color:#dfe9f5;font-size:12px;font-weight:900">교회 원격 관리자 키</label>
-      <div style="display:flex;gap:7px">
-        <input id="bb4OwnerKeyInput" type="text" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="관리자 키 붙여넣기"
-          style="flex:1;min-width:0;height:42px;border:1px solid #315a80;border-radius:10px;background:#0a1b2c;color:#fff;padding:0 11px;font-size:13px;outline:none">
-        <button id="bb4OwnerKeyPaste" type="button"
-          style="height:42px;padding:0 12px;border:1px solid #315a80;border-radius:10px;background:#10253b;color:#fff;font-size:12px;font-weight:900;cursor:pointer">붙여넣기</button>
-        <button id="bb4OwnerKeySave" type="button"
-          style="height:42px;padding:0 13px;border:1px solid #ff9000;border-radius:10px;background:#ff9000;color:#07111d;font-size:12px;font-weight:950;cursor:pointer">저장</button>
+      <button id="bb4OwnerKeyPrompt" type="button"
+        style="width:100%;min-height:44px;border:1px solid #ff9000;border-radius:10px;background:#ff9000;color:#07111d;font-size:13px;font-weight:950;cursor:pointer">
+        관리자 키 입력
+      </button>
+      <div style="margin-top:6px;color:#8fa2b7;font-size:10px;line-height:1.4">
+        방송실 기기에서 처음 한 번만 입력합니다. 누르면 브라우저 입력창이 열립니다.
       </div>
-      <div style="margin-top:6px;color:#8fa2b7;font-size:10px;line-height:1.4">방송실 기기에서 처음 한 번만 입력합니다. 사회자에게는 이 키를 보내지 않습니다.</div>
     </div>
     <div class="bb4-remote-status" id="bb4RemotePanelStatus">연결되지 않았습니다.</div>
     <div class="bb4-remote-actions">
@@ -2282,30 +2279,20 @@ function mountUi(){
   panel.addEventListener('click',e=>{if(e.target===panel)panel.classList.remove('is-open')});
   document.getElementById('bb4RemoteClose').addEventListener('click',()=>panel.classList.remove('is-open'));
   document.getElementById('bb4RemoteConnectDisplay').addEventListener('click',()=>connectDisplay(false));
-  document.getElementById('bb4OwnerKeyPaste').addEventListener('click',async()=>{
-    const input=document.getElementById('bb4OwnerKeyInput');
-    try{
-      const text=(await navigator.clipboard.readText()).trim();
-      if(!text){toast('클립보드에 복사된 키가 없습니다.');return}
-      input.value=text;
-      input.focus();
-      toast('관리자 키를 붙여넣었습니다.');
-    }catch(err){
-      console.warn(err);
-      input.focus();
-      input.select();
-      panelStatus('자동 붙여넣기가 차단되었습니다. 입력칸을 길게 눌러 “붙여넣기”를 선택하세요.');
-      toast('입력칸을 길게 눌러 붙여넣으세요.');
+  document.getElementById('bb4OwnerKeyPrompt').addEventListener('click',()=>{
+    const current=(localStorage.getItem(OWNER_KEY_STORE)||'').trim();
+    const entered=(prompt('교회 원격 관리자 키를 붙여넣으세요.',current)||'').trim();
+    if(!entered){
+      panelStatus('관리자 키 입력을 취소했습니다.');
+      return;
     }
-  });
-  document.getElementById('bb4OwnerKeySave').addEventListener('click',()=>{
-    const input=(document.getElementById('bb4OwnerKeyInput')?.value||'').trim();
-    if(!input){toast('관리자 키를 붙여넣어 주세요.');return}
-    localStorage.setItem(OWNER_KEY_STORE,input);
+    localStorage.setItem(OWNER_KEY_STORE,entered);
     syncOwnerKeyUi();
     panelStatus('관리자 키가 이 기기에 저장되었습니다. 이제 “방송 화면 원격 연결”을 누르세요.');
     toast('관리자 키를 저장했습니다.');
   });
+
+
   document.getElementById('bb4RemoteCopy').addEventListener('click',copyControllerLink);
   document.getElementById('bb4RemoteRotate').addEventListener('click',rotateRoom);
   document.getElementById('bb4RemoteReset').addEventListener('click',async()=>{
@@ -2365,19 +2352,14 @@ async function ensureAuth(){
 }
 function ownerKey(){
   const stored=(localStorage.getItem(OWNER_KEY_STORE)||'').trim();
-  if(stored)return stored;
-  const input=(document.getElementById('bb4OwnerKeyInput')?.value||'').trim();
-  if(!input)throw new Error('NO_OWNER_KEY');
-  localStorage.setItem(OWNER_KEY_STORE,input);
-  return input;
+  if(!stored)throw new Error('NO_OWNER_KEY');
+  return stored;
 }
 function syncOwnerKeyUi(){
   const wrap=document.getElementById('bb4OwnerKeyWrap');
-  const input=document.getElementById('bb4OwnerKeyInput');
-  if(!wrap||!input)return;
+  if(!wrap)return;
   const has=!!(localStorage.getItem(OWNER_KEY_STORE)||'').trim();
   wrap.style.display=(role==='controller'||has)?'none':'block';
-  if(!has&&role!=='controller')input.value='';
 }
 function currentPayload(){
   const s=api()?.getSnapshot?.();
@@ -2450,7 +2432,7 @@ async function connectDisplay(auto){
     const msg=String(err?.code||err?.message||'');
     if(msg.includes('operation-not-allowed'))panelStatus('Firebase Authentication에서 익명 로그인을 먼저 켜야 합니다.');
     else if(msg.includes('permission-denied'))panelStatus('관리자 키 또는 Firebase Security Rules가 맞지 않습니다.');
-    else if(msg.includes('NO_OWNER_KEY'))panelStatus('위 관리자 키 입력칸에 키를 붙여넣고 저장한 뒤 다시 연결하세요.');
+    else if(msg.includes('NO_OWNER_KEY'))panelStatus('먼저 “관리자 키 입력”을 눌러 키를 저장한 뒤 다시 연결하세요.');
     else panelStatus('원격 연결에 실패했습니다. Firebase 설정을 확인하세요.');
     badgeState('원격 오류','is-bad');setPanelButtons();
   }
