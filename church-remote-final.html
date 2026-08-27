@@ -1110,7 +1110,7 @@ button,input,textarea,select{font:inherit}button{cursor:pointer}button:focus-vis
 
 /* Existing admin remains the same on desktop/TV.
    Only make that same admin screen usable on a phone. */
-@media (max-width:1024px) and (pointer:coarse){
+@media (max-width:1366px) and (pointer:coarse){
   .admin-scroll-area{padding:10px}
   .admin-panel{padding:14px;border-radius:10px}
   .admin-header{flex-direction:column;gap:12px;margin-bottom:16px}
@@ -1144,6 +1144,9 @@ button,input,textarea,select{font:inherit}button{cursor:pointer}button:focus-vis
 <!-- BibleGoldenBell_4X4 FINAL MOBILE PRESENTER READ-ONLY 2026-08-23 -->
 <!-- BB4_REMOTE_BEGIN_CSS -->
 <!-- BB4 REMOTE FINAL v7 2026-08-26: role-separated UI, phone-general remote hidden -->
+<!-- SECURITY: Google Cloud is restricted to this repository path. Keep a full HTTPS referrer
+     for Firebase/Google API calls so the path-specific HTTP-referrer restriction can match.
+     The controller join key is stored in the URL fragment (#...), and fragments are never sent as Referer. -->
 <meta name="referrer" content="no-referrer-when-downgrade">
 <style>
 /* Remote additions are fixed overlays only. They never participate in the existing app layout. */
@@ -1214,7 +1217,7 @@ button,input,textarea,select{font:inherit}button{cursor:pointer}button:focus-vis
 .bb4-team-picker-grid .t2{border-color:#4d9ce8}
 .bb4-team-picker-grid .t3{border-color:#8f7ee8}
 .bb4-team-picker-grid .clear{grid-column:1/-1}
-[data-mobile-preview].bb4-remote-visited{box-shadow:inset 0 0 0 2px rgba(255,255,255,.20)!important}
+[data-mobile-preview].bb4-remote-visited{background:linear-gradient(180deg,#303846,#252c37)!important;border-color:#687180!important;color:#d5d9df!important;box-shadow:inset 0 0 0 2px rgba(255,255,255,.14)!important}
 [data-mobile-preview].bb4-remote-owner-1{
   background:linear-gradient(145deg,#b76b00,#7c4600)!important;border-color:#f2a11a!important;color:#fff!important
 }
@@ -1231,7 +1234,7 @@ button,input,textarea,select{font:inherit}button{cursor:pointer}button:focus-vis
   box-shadow:0 10px 30px rgba(0,0,0,.4)
 }
 #bb4RemoteToast.is-open{display:block}
-@media(max-width:1024px) and (pointer:coarse){
+@media(max-width:1366px) and (pointer:coarse){
   #bb4RemoteBadge{right:9px;bottom:9px;height:30px;min-width:30px;padding:0 9px;font-size:10px}
 }
 </style>
@@ -1351,7 +1354,7 @@ function revokeMedia(key){if(mediaUrlCache.has(key)){URL.revokeObjectURL(mediaUr
 async function mediaUrl(ref){if(!ref)return null;if(/^data:|^blob:|^https?:|^\//.test(ref))return ref;if(mediaUrlCache.has(ref))return mediaUrlCache.get(ref);const b=await dbGet(ref);if(!b)return null;const u=URL.createObjectURL(b);mediaUrlCache.set(ref,u);return u}
 
 function isMobilePresenterDevice(){
-  return window.matchMedia('(max-width:1024px)').matches &&
+  return window.matchMedia('(max-width:1366px)').matches &&
     (navigator.maxTouchPoints>0 || window.matchMedia('(pointer:coarse)').matches);
 }
 function render(){
@@ -1384,6 +1387,9 @@ function setMobilePresenterMode(mode){
   mobilePreviewAnswerVisible=false;
   currentView='home';
   render();
+  if(next==='remote')setTimeout(()=>{
+    try{window.__BB4_MOBILE_APPLY_REMOTE_STATE__?.(window.__BB4_REMOTE_DISPLAY_STATE__||null)}catch{}
+  },0);
 }
 window.__BB4_PHONE_MODE__=mobilePresenterMode;
 
@@ -1547,6 +1553,8 @@ async function renderMobilePresenterQuestion(){
 window.__BB4_MOBILE_APPLY_REMOTE_STATE__=function(remoteState){
   window.__BB4_REMOTE_DISPLAY_STATE__=remoteState||null;
   if(mobilePresenterMode!=='remote'||!remoteState)return;
+  // While the presenter is editing settings, remote state must never pull the UI away.
+  if(currentView==='admin')return;
   const remoteView=String(remoteState.view||'home');
   const remoteIndex=Number(remoteState.question);
   const remoteAnswer=!!remoteState.answerVisible;
@@ -2379,7 +2387,7 @@ if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)){
 render();
 })();
 </script>
-<!-- BB4_REMOTE_BEGIN_RUNTIME FINAL_V8_RECOVERY -->
+<!-- BB4_REMOTE_BEGIN_RUNTIME FINAL_V11_SECURE_AUTH -->
 <script>
 (async()=>{
 'use strict';
@@ -2394,11 +2402,19 @@ const FIREBASE_CONFIG={
   appId:'1:729731199303:web:1e0d9a58765e7b5c029c62'
 };
 
-const OWNER_ROOM_STORE='bb4_remote_owner_room_v3';
-const OWNER_KEY_STORE='bb4_remote_owner_key_v3';
-const CONTROLLER_ROOM_STORE='bb4_remote_controller_room_v3';
+const OWNER_ROOM_STORE='bb4_remote_owner_room_v4';
+const OWNER_KEY_STORE='bb4_remote_owner_key_v4';
+const CONTROLLER_ROOM_STORE='bb4_remote_controller_credentials_v4';
+const LEGACY_REMOTE_KEYS=[
+  'bb4_remote_owner_room_session_v1','bb4_remote_owner_key_session_v1','bb4_remote_controller_room_session_v1',
+  'bb4_remote_owner_room_v3','bb4_remote_owner_key_v3','bb4_remote_controller_room_v3'
+];
+const BB4_REMOTE_BUILD='v13-final-persistent-2026-08-27';
+const BB4_ALLOWED_ORIGIN='https://bibleplay.github.io';
+const BB4_ALLOWED_PATH_PREFIX='/BibleGoldenBell_4X4/';
 
 let fb=null,auth=null,db=null,user=null;
+let authPreflightDone=false,authPreflightResult=null;
 let role='none',connected=false,roomId='',roomKey='',joinProof='';
 let displayState=null,lastCommandId=null,lastPublishedSig='';
 let unsubCommand=null,unsubState=null,pollTimer=null,heartbeatTimer=null;
@@ -2415,8 +2431,29 @@ async function sha(text){
   const d=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text));
   return [...new Uint8Array(d)].map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-function jsonGet(k){try{return JSON.parse(localStorage.getItem(k)||'null')}catch{return null}}
-function jsonSet(k,v){localStorage.setItem(k,JSON.stringify(v))}
+const volatileRemoteStore=new Map();
+function secureGet(k){try{return localStorage.getItem(k)}catch{return volatileRemoteStore.get(k)??null}}
+function secureSet(k,v){try{localStorage.setItem(k,v)}catch{volatileRemoteStore.set(k,String(v))}}
+function secureRemove(k){try{localStorage.removeItem(k)}catch{}volatileRemoteStore.delete(k)}
+function migrateRemotePersistentData(){
+  try{
+    const pairs=[
+      ['bb4_remote_owner_key_session_v1',OWNER_KEY_STORE],
+      ['bb4_remote_owner_room_session_v1',OWNER_ROOM_STORE]
+    ];
+    for(const [oldKey,newKey] of pairs){
+      const v=sessionStorage.getItem(oldKey);
+      if(v&&!localStorage.getItem(newKey))localStorage.setItem(newKey,v);
+    }
+    const oldControllerRoom=sessionStorage.getItem('bb4_remote_controller_room_session_v1');
+    if(oldControllerRoom&&!localStorage.getItem(CONTROLLER_ROOM_STORE)){
+      localStorage.setItem(CONTROLLER_ROOM_STORE,JSON.stringify({room:oldControllerRoom,key:''}));
+    }
+    for(const k of LEGACY_REMOTE_KEYS){try{sessionStorage.removeItem(k)}catch{}}
+  }catch{}
+}
+function jsonGet(k){try{return JSON.parse(secureGet(k)||'null')}catch{return null}}
+function jsonSet(k,v){secureSet(k,JSON.stringify(v))}
 function frag(){
   const p=new URLSearchParams(location.hash.replace(/^#/,''));
   return {
@@ -2425,16 +2462,71 @@ function frag(){
     key:p.get('key')||''
   };
 }
+function savedControllerCredentials(){
+  const v=jsonGet(CONTROLLER_ROOM_STORE);
+  if(v&&typeof v==='object'&&v.room)return {room:String(v.room),key:String(v.key||'')};
+  if(typeof v==='string'&&v)return {room:v,key:''};
+  return null;
+}
 function isControllerContext(){
   const f=frag();
-  return f.role==='controller'&&!!f.room;
+  if(f.role==='controller'&&!!f.room)return true;
+  const coarse=(navigator.maxTouchPoints||0)>0||matchMedia('(pointer:coarse)').matches;
+  return !!(coarse&&matchMedia('(max-width:1366px)').matches&&savedControllerCredentials()?.room);
 }
 function isHandheldGeneralContext(){
   if(isControllerContext())return false;
   const coarse=(navigator.maxTouchPoints||0)>0||matchMedia('(pointer:coarse)').matches;
-  return coarse&&matchMedia('(max-width:900px)').matches;
+  return coarse&&matchMedia('(max-width:1366px)').matches;
 }
 function modeLabel(m){return m==='2'?'2팀':m==='3'?'3팀':'개인'}
+function isOfficialRemoteOrigin(){
+  return location.origin===BB4_ALLOWED_ORIGIN && location.pathname.startsWith(BB4_ALLOWED_PATH_PREFIX);
+}
+function apiKeyFingerprint(){
+  const k=String(FIREBASE_CONFIG.apiKey||'');
+  return k.length>=10?`${k.slice(0,6)}…${k.slice(-6)}`:'설정 없음';
+}
+function googleApiReason(data){
+  const details=Array.isArray(data?.error?.details)?data.error.details:[];
+  const info=details.find(x=>x&&typeof x==='object'&&x.reason);
+  return String(info?.reason||data?.error?.status||data?.error?.message||'').trim();
+}
+function authFailureMessage(err){
+  const code=String(err?.code||'');
+  const msg=String(err?.message||'');
+  const reason=String(err?.bb4Reason||authPreflightResult?.reason||'');
+  if(reason.includes('API_KEY_HTTP_REFERRER_BLOCKED'))return 'API 키의 웹사이트 제한이 현재 실행 주소와 맞지 않습니다. Google Cloud의 허용 웹사이트를 확인하세요.';
+  if(reason.includes('API_KEY_SERVICE_BLOCKED'))return 'API 키의 API 제한에서 Firebase Authentication에 필요한 API가 차단되었습니다.';
+  if(reason.includes('API_KEY_INVALID')||code.includes('invalid-api-key')||code.includes('api-key-not-valid'))return 'Firebase Authentication이 현재 Web API Key를 유효한 키로 인정하지 않았습니다. 프로젝트 설정의 Web API Key와 Google Cloud의 같은 키인지 확인하세요.';
+  if(code.includes('unauthorized-domain')||reason.includes('UNAUTHORIZED_DOMAIN'))return '현재 웹 도메인이 Firebase Authentication의 승인된 도메인에 없습니다.';
+  if(code.includes('operation-not-allowed'))return 'Firebase Authentication의 익명 로그인이 꺼져 있습니다.';
+  if(code.includes('network-request-failed'))return 'Firebase Authentication 서버에 연결하지 못했습니다. 인터넷 연결을 확인하세요.';
+  return msg||code||'원격 인증 중 알 수 없는 오류가 발생했습니다.';
+}
+async function preflightAuthKey(){
+  if(authPreflightDone)return authPreflightResult;
+  authPreflightDone=true;
+  try{
+    const u=new URL('https://identitytoolkit.googleapis.com/v1/projects');
+    u.searchParams.set('key',FIREBASE_CONFIG.apiKey);
+    const r=await fetch(u.toString(),{
+      method:'GET',cache:'no-store',credentials:'omit',
+      referrer:location.href,referrerPolicy:'no-referrer-when-downgrade'
+    });
+    const text=await r.text();
+    let data={};try{data=text?JSON.parse(text):{}}catch{}
+    if(r.ok){authPreflightResult={ok:true,status:r.status,reason:'OK'};return authPreflightResult;}
+    const reason=googleApiReason(data)||`HTTP_${r.status}`;
+    authPreflightResult={ok:false,status:r.status,reason};
+    const e=new Error(reason);e.code='BB4_AUTH_PREFLIGHT';e.bb4Reason=reason;throw e;
+  }catch(err){
+    // Network/CORS uncertainty must not block the real Firebase SDK attempt.
+    if(err?.code==='BB4_AUTH_PREFLIGHT')throw err;
+    authPreflightResult={ok:null,status:0,reason:'PREFLIGHT_UNAVAILABLE'};
+    return authPreflightResult;
+  }
+}
 function sigOf(s){
   return JSON.stringify({
     mode:s.mode,packFingerprint:s.packFingerprint,view:s.view,question:s.question,
@@ -2473,18 +2565,21 @@ function mountUi(){
           기존 관리자 등록 지우기
         </button>
         <div id="bb4OwnerKeyHelp" style="margin-top:8px;color:#8fa2b7;font-size:10px;line-height:1.45">
-          관리자 키는 이 방송 PC의 브라우저에만 저장됩니다. 연결 실패 시 여기서 다시 등록할 수 있습니다.
+          관리자 키는 이 탭의 세션에만 보관되며 탭을 닫으면 사라집니다. 새 행사 세션에서는 다시 등록하세요.
         </div>
       </div>
     </div>
+    <div id="bb4OwnerRegistered" hidden style="margin:0 0 10px;padding:9px 11px;border:1px solid #245d45;border-radius:10px;background:#0b211a;color:#8ee0b8;font-size:11px;font-weight:900">✓ 방송 PC 관리자 등록 완료</div>
     <div class="bb4-remote-status" id="bb4RemotePanelStatus">연결되지 않았습니다.</div>
     <div class="bb4-remote-actions">
       <button class="primary wide" id="bb4RemoteConnectDisplay" hidden>방송 화면 원격 연결</button>
       <button class="primary wide" id="bb4RemoteCopy" hidden>사회자 링크 복사</button>
-      <button id="bb4RemoteRotate" hidden>새 연결키</button>
+      <button id="bb4RemoteOwnerEdit" hidden>관리자 키 다시 등록</button>
+      <button id="bb4RemoteRotate" hidden>사회자 연결 리셋</button>
       <button class="danger" id="bb4RemoteReset" hidden>전체 초기화</button>
       <button id="bb4RemoteClose">닫기</button>
     </div>
+    <div id="bb4RemoteBuild" style="margin-top:10px;color:#71859b;font-size:9px;text-align:center">${BB4_REMOTE_BUILD} · ${apiKeyFingerprint()}</div>
   </section>`;
 
   const picker=document.createElement('div');
@@ -2499,25 +2594,30 @@ function mountUi(){
   panel.addEventListener('click',e=>{if(e.target===panel)panel.classList.remove('is-open')});
   document.getElementById('bb4RemoteClose').addEventListener('click',()=>panel.classList.remove('is-open'));
   document.getElementById('bb4RemoteConnectDisplay').addEventListener('click',()=>connectDisplay(false));
+  document.getElementById('bb4RemoteOwnerEdit').addEventListener('click',()=>{
+    syncOwnerKeyUi(true);
+    panelStatus('관리자 키를 다시 등록할 수 있습니다. 기존 키를 지우지 않아도 새 키로 덮어쓸 수 있습니다.');
+  });
   const ownerFileBtn=document.getElementById('bb4OwnerKeyFileBtn');
   const ownerFileInput=document.getElementById('bb4OwnerKeyFile');
   const ownerPaste=document.getElementById('bb4OwnerKeyPaste');
   const ownerPasteBtn=document.getElementById('bb4OwnerKeyPasteBtn');
   const ownerClearBtn=document.getElementById('bb4OwnerKeyClearBtn');
   ownerFileBtn.addEventListener('click',()=>ownerFileInput.click());
-  ownerPasteBtn.addEventListener('click',()=>{
+  ownerPasteBtn.addEventListener('click',async()=>{
     const key=String(ownerPaste?.value||'').trim();
     if(!key||key.length<20){panelStatus('관리자 키가 비어 있거나 너무 짧습니다. 비공개 관리자 키 전체를 붙여넣으세요.');return;}
-    localStorage.setItem(OWNER_KEY_STORE,key);
-    localStorage.removeItem(OWNER_ROOM_STORE);
+    secureSet(OWNER_KEY_STORE,key);
+    secureRemove(OWNER_ROOM_STORE);
     if(ownerPaste)ownerPaste.value='';
-    syncOwnerKeyUi(true);setPanelButtons();
-    panelStatus('관리자 키를 다시 등록했습니다. 이제 “방송 화면 원격 연결”을 누르세요.');
+    syncOwnerKeyUi(false);setPanelButtons();
+    panelStatus('관리자 등록 완료 · 안전한 원격 연결을 시작합니다…');
     toast('관리자 등록이 완료되었습니다.');
+    await connectDisplay(false);
   });
   ownerClearBtn.addEventListener('click',()=>{
-    localStorage.removeItem(OWNER_KEY_STORE);
-    localStorage.removeItem(OWNER_ROOM_STORE);
+    secureRemove(OWNER_KEY_STORE);
+    secureRemove(OWNER_ROOM_STORE);
     connected=false;roomId='';roomKey='';joinProof='';
     syncOwnerKeyUi(true);setPanelButtons();
     panelStatus('기존 관리자 등록을 지웠습니다. 관리자 키를 다시 붙여넣거나 등록 파일을 선택하세요.');
@@ -2527,11 +2627,12 @@ function mountUi(){
     if(!file)return;
     try{
       await importOwnerKeyFile(file);
-      localStorage.removeItem(OWNER_ROOM_STORE);
-      syncOwnerKeyUi(true);
+      secureRemove(OWNER_ROOM_STORE);
+      syncOwnerKeyUi(false);
       setPanelButtons();
-      panelStatus('관리자 등록이 완료되었습니다. 이제 “방송 화면 원격 연결”을 누르세요.');
+      panelStatus('관리자 등록 완료 · 안전한 원격 연결을 시작합니다…');
       toast('관리자 등록이 완료되었습니다.');
+      await connectDisplay(false);
     }catch(err){
       console.error(err);
       panelStatus('관리자 등록 파일을 읽지 못했습니다. 올바른 비공개 등록 파일을 선택하세요.');
@@ -2567,8 +2668,10 @@ function setPanelButtons(){
   const rotate=document.getElementById('bb4RemoteRotate');
   const reset=document.getElementById('bb4RemoteReset');
   const connect=document.getElementById('bb4RemoteConnectDisplay');
+  const ownerEdit=document.getElementById('bb4RemoteOwnerEdit');
+  const registered=document.getElementById('bb4OwnerRegistered');
   const close=document.getElementById('bb4RemoteClose');
-  const hasOwner=!!(localStorage.getItem(OWNER_KEY_STORE)||'').trim();
+  const hasOwner=!!(secureGet(OWNER_KEY_STORE)||'').trim();
   const isDisplay=role==='display';
   const isController=role==='controller';
 
@@ -2578,6 +2681,8 @@ function setPanelButtons(){
     :'방송 화면에서만 원격 연결을 시작합니다. 연결 후 “사회자 링크 복사”를 눌러 휴대폰으로 보내세요.';
 
   syncOwnerKeyUi();
+  if(registered)registered.hidden=!(isDisplay&&hasOwner);
+  if(ownerEdit){ownerEdit.hidden=!(isDisplay&&hasOwner);ownerEdit.disabled=false;}
   if(connect){
     connect.hidden=!(isDisplay&&!connected&&hasOwner);
     connect.disabled=false;
@@ -2587,7 +2692,7 @@ function setPanelButtons(){
   if(rotate){rotate.hidden=!(isDisplay&&connected);rotate.disabled=false;}
   if(reset){reset.hidden=!(isController&&connected);reset.disabled=false;}
   if(close){
-    const visibleActions=[connect,copy,rotate,reset].filter(b=>b&&!b.hidden).length;
+    const visibleActions=[connect,copy,ownerEdit,rotate,reset].filter(b=>b&&!b.hidden).length;
     close.classList.toggle('wide',visibleActions===0||visibleActions===1);
   }
 }
@@ -2605,13 +2710,18 @@ async function loadFirebase(){
   ]);
   fb={appMod,authMod,dbMod};
   const app=appMod.initializeApp(FIREBASE_CONFIG);
-  auth=authMod.getAuth(app);
+  // This app only uses anonymous authentication. initializeAuth without a popup/redirect
+  // resolver avoids the unnecessary Auth-domain iframe used by getAuth().
+  auth=authMod.initializeAuth(app,{persistence:[authMod.browserLocalPersistence,authMod.inMemoryPersistence]});
   db=dbMod.getDatabase(app);
 }
 async function ensureAuth(){
+  if(!isOfficialRemoteOrigin()){
+    const e=new Error('REMOTE_ORIGIN_NOT_ALLOWED');e.code='BB4_REMOTE_ORIGIN_NOT_ALLOWED';throw e;
+  }
   if(typeof auth.authStateReady==='function')await auth.authStateReady();
   if(auth.currentUser){user=auth.currentUser;return user}
-  await fb.authMod.setPersistence(auth,fb.authMod.browserLocalPersistence);
+  await preflightAuthKey();
   const result=await fb.authMod.signInAnonymously(auth);
   user=result.user;return user;
 }
@@ -2626,25 +2736,25 @@ async function importOwnerKeyFile(file){
     key=text;
   }
   if(!key||key.length<20)throw new Error('INVALID_OWNER_FILE');
-  localStorage.setItem(OWNER_KEY_STORE,key);
+  secureSet(OWNER_KEY_STORE,key);
   return true;
 }
 function ownerKey(){
-  const stored=(localStorage.getItem(OWNER_KEY_STORE)||'').trim();
+  const stored=(secureGet(OWNER_KEY_STORE)||'').trim();
   if(!stored)throw new Error('NO_OWNER_KEY');
   return stored;
 }
 function syncOwnerKeyUi(forceShow=false){
   const wrap=document.getElementById('bb4OwnerKeyWrap');
   if(!wrap)return;
-  const has=!!(localStorage.getItem(OWNER_KEY_STORE)||'').trim();
+  const has=!!(secureGet(OWNER_KEY_STORE)||'').trim();
   wrap.hidden=!(role==='display'&&(!has||forceShow));
   const clearBtn=document.getElementById('bb4OwnerKeyClearBtn');
   if(clearBtn)clearBtn.hidden=!has;
   const help=document.getElementById('bb4OwnerKeyHelp');
   if(help)help.textContent=has
-    ?'이 브라우저에 관리자 키가 저장되어 있습니다. 연결이 실패하면 새 키를 붙여넣어 덮어쓰거나 기존 등록을 지우고 다시 등록하세요.'
-    :'처음 한 번만 비공개 관리자 키를 붙여넣거나 관리자 등록 파일을 선택하세요.';
+    ?'이 탭에 관리자 키가 임시 보관되어 있습니다. 탭을 닫으면 자동으로 사라집니다. 연결이 실패하면 새 키를 붙여넣어 덮어쓸 수 있습니다.'
+    :'이번 행사 세션에서 한 번만 비공개 관리자 키를 붙여넣거나 관리자 등록 파일을 선택하세요. 탭을 닫으면 자동 삭제됩니다.';
 }
 function currentPayload(){
   const s=api()?.getSnapshot?.();
@@ -2715,11 +2825,14 @@ async function connectDisplay(auto){
   }catch(err){
     console.error(err);connected=false;
     const msg=String(err?.code||err?.message||'');
-    if(msg.includes('operation-not-allowed'))panelStatus('Firebase 익명 로그인이 꺼져 있습니다. Authentication의 익명 로그인을 켜세요.');
-    else if(msg.includes('permission-denied'))panelStatus('관리자 키 또는 Firebase Security Rules가 맞지 않습니다. 아래에서 관리자 키를 다시 등록할 수 있습니다.');
-    else if(msg.includes('NO_OWNER_KEY'))panelStatus('관리자 키가 없습니다. 아래에 관리자 키를 붙여넣거나 등록 파일을 선택하세요.');
-    else panelStatus(`원격 연결에 실패했습니다. 아래에서 관리자 키를 다시 등록해 보세요.${msg?` (${msg.slice(0,80)})`:''}`);
-    badgeState('원격 오류','is-bad');setPanelButtons();syncOwnerKeyUi(true);
+    if(msg.includes('BB4_REMOTE_ORIGIN_NOT_ALLOWED'))panelStatus('보안을 위해 원격 기능은 공식 GitHub Pages의 BibleGoldenBell_4X4 주소에서만 실행됩니다.');
+    else if(msg.includes('operation-not-allowed'))panelStatus('Firebase 익명 로그인이 꺼져 있습니다. Authentication의 익명 로그인을 켜세요.');
+    else if(msg.includes('permission-denied'))panelStatus('Firebase 인증은 통과했지만 Database Security Rules 또는 관리자 등록 증명이 맞지 않습니다.');
+    else if(msg.includes('NO_OWNER_KEY'))panelStatus('관리자 키가 없습니다. 관리자 키를 붙여넣거나 등록 파일을 선택하세요.');
+    else panelStatus(`원격 인증 실패 · ${authFailureMessage(err)}`);
+    badgeState('원격 오류','is-bad');setPanelButtons();
+    const authProblem=msg.includes('invalid-api-key')||msg.includes('api-key-not-valid')||msg.includes('BB4_AUTH_PREFLIGHT')||String(err?.bb4Reason||'').startsWith('API_KEY_');
+    syncOwnerKeyUi(!authProblem);
   }
 }
 async function publishState(force){
@@ -2746,37 +2859,38 @@ async function copyControllerLink(){
 }
 async function rotateRoom(){
   if(!connected||role!=='display')return;
-  if(!confirm('새 연결키를 만들까요? 기존 사회자 링크와 기존 연결은 모두 끊깁니다.'))return;
+  if(!confirm('사회자 연결을 리셋할까요? 기존 사회자 링크와 홈 화면 연결은 모두 무효화됩니다. 새 링크를 다시 보내야 합니다.'))return;
   try{
     stopRealtime();
     await fb.dbMod.remove(fb.dbMod.ref(db,`rooms/${roomId}`));
     connected=false;
-    localStorage.removeItem(OWNER_ROOM_STORE);
+    secureRemove(OWNER_ROOM_STORE);
     await createRoom();
     await connectDisplay(true);
-    toast('새 연결키를 만들었습니다. 새 사회자 링크를 다시 보내세요.');
+    toast('사회자 연결을 리셋했습니다. 새 사회자 링크를 다시 보내세요.');
   }catch(err){
-    console.error(err);badgeState('원격 오류','is-bad');panelStatus('새 연결키 생성에 실패했습니다.');
+    console.error(err);badgeState('원격 오류','is-bad');panelStatus('사회자 연결 리셋에 실패했습니다.');
   }
 }
 
 async function connectControllerFromUrl(){
   const f=frag();
-  if(f.role!=='controller'||!f.room)return false;
-  role='controller';roomId=f.room;
+  const saved=savedControllerCredentials();
+  const fromLink=f.role==='controller'&&!!f.room;
+  const targetRoom=fromLink?f.room:(saved?.room||'');
+  const targetKey=fromLink?(f.key||((saved?.room===f.room)?saved.key:'')):(saved?.key||'');
+  if(!targetRoom)return false;
+  role='controller';roomId=targetRoom;
   try{
     await ensureAuth();
-    if(f.key){
-      joinProof=await sha(f.key);
+    if(targetKey){
+      joinProof=await sha(targetKey);
       await fb.dbMod.set(fb.dbMod.ref(db,`rooms/${roomId}/members/${user.uid}`),{
         role:'controller',proof:joinProof,joinedAt:Date.now()
       });
-      localStorage.setItem(CONTROLLER_ROOM_STORE,roomId);
-      const clean=new URLSearchParams({role:'controller',room:roomId});
-      history.replaceState(null,'',location.pathname+location.search+'#'+clean.toString());
-    }else{
-      const saved=localStorage.getItem(CONTROLLER_ROOM_STORE);
-      if(saved!==roomId)throw new Error('CONTROLLER_LINK_REQUIRED');
+      secureSet(CONTROLLER_ROOM_STORE,JSON.stringify({room:roomId,key:targetKey}));
+    }else if(!saved||saved.room!==roomId){
+      throw new Error('CONTROLLER_LINK_REQUIRED');
     }
 
     connected=true;
@@ -2805,9 +2919,12 @@ async function connectControllerFromUrl(){
   }catch(err){
     console.error(err);connected=false;
     const msg=String(err?.code||err?.message||'');
-    if(msg.includes('operation-not-allowed'))panelStatus('Firebase Authentication에서 익명 로그인을 먼저 켜야 합니다.');
-    else if(msg.includes('permission-denied')||msg.includes('CONTROLLER_LINK_REQUIRED'))panelStatus('사회자 링크가 만료되었거나 유효하지 않습니다. 방송 화면에서 새 링크를 받아주세요.');
-    else panelStatus('사회자 원격 연결에 실패했습니다.');
+    if(msg.includes('BB4_REMOTE_ORIGIN_NOT_ALLOWED'))panelStatus('보안을 위해 사회자 원격은 공식 GitHub Pages 주소에서만 실행됩니다.');
+    else if(msg.includes('operation-not-allowed'))panelStatus('Firebase Authentication에서 익명 로그인을 먼저 켜야 합니다.');
+    else if(msg.includes('permission-denied')||msg.includes('CONTROLLER_LINK_REQUIRED')){
+      secureRemove(CONTROLLER_ROOM_STORE);
+      panelStatus('사회자 연결이 만료되었거나 리셋되었습니다. 방송 화면에서 새 사회자 링크를 받아 다시 등록하세요.');
+    }else panelStatus(`사회자 원격 인증 실패 · ${authFailureMessage(err)}`);
     badgeState('연결 실패','is-bad');setPanelButtons();
     return false;
   }
@@ -2968,9 +3085,13 @@ window.addEventListener('bb4-mobile-board-rendered',()=>{
     decorateMobileBoard();
     const el=document.getElementById('mobileRemoteInlineStatus');
     if(el&&displayState)el.textContent=`방송 화면 연결됨 · ${modeLabel(displayState.mode)} · ${displayState.view==='question'?`${Number(displayState.question)+1}번 ${displayState.answerVisible?'정답':'문제'}`:'문제판'}`;
+    if(currentView==='home'&&displayState) setTimeout(()=>{
+      try{window.__BB4_MOBILE_APPLY_REMOTE_STATE__?.(displayState)}catch{}
+    },0);
   }
 });
 
+migrateRemotePersistentData();
 mountUi();
 try{
   if(isHandheldGeneralContext()){
@@ -2988,15 +3109,15 @@ try{
   }else{
     role='display';
     const saved=jsonGet(OWNER_ROOM_STORE);
-    if(saved?.room&&localStorage.getItem(OWNER_KEY_STORE)){
+    if(saved?.room&&secureGet(OWNER_KEY_STORE)){
       setPanelButtons();
       connectDisplay(true).catch(()=>{});
     }else{
       badgeState('원격');
-      if(localStorage.getItem(OWNER_KEY_STORE)){
-        panelStatus('방송 화면에서 “방송 화면 원격 연결”을 누르세요.');
+      if(secureGet(OWNER_KEY_STORE)){
+        panelStatus('이 기기의 관리자 등록 완료 · “방송 화면 원격 연결”을 누르면 바로 연결됩니다.');
       }else{
-        panelStatus('처음 한 번만 방송 PC를 관리자 기기로 등록한 뒤 원격 연결을 시작하세요.');
+        panelStatus('이 기기에서 처음 한 번만 방송 PC 관리자 키를 등록한 뒤 원격 연결을 시작하세요. 이후에는 계속 기억됩니다.');
       }
       setPanelButtons();
     }
