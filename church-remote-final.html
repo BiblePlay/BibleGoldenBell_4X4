@@ -1040,6 +1040,7 @@ button,input,textarea,select{font:inherit}button{cursor:pointer}button:focus-vis
 <!-- BibleGoldenBell_4X4 FINAL BINGO + MINI CORRECTION 2026-08-23 -->
 <!-- BibleGoldenBell_4X4 FINAL MOBILE PRESENTER READ-ONLY 2026-08-23 -->
 <!-- BB4_REMOTE_BEGIN_CSS -->
+<!-- BB4 REMOTE FINAL v7 2026-08-26: role-separated UI, phone-general remote hidden -->
 <meta name="referrer" content="no-referrer">
 <style>
 /* Remote additions are fixed overlays only. They never participate in the existing app layout. */
@@ -1091,6 +1092,8 @@ button,input,textarea,select{font:inherit}button{cursor:pointer}button:focus-vis
 .bb4-remote-actions button.danger{background:#32191e;border-color:#7a3c45;color:#ffd1d5}
 .bb4-remote-actions button.wide{grid-column:1/-1}
 .bb4-remote-actions button:disabled{opacity:.42;cursor:not-allowed}
+.bb4-remote-actions button[hidden],#bb4OwnerKeyWrap[hidden]{display:none!important}
+#bb4RemoteBadge[hidden],#bb4RemotePanel[hidden]{display:none!important}
 #bb4TeamPicker{
   position:fixed;z-index:100000;display:none;min-width:220px;padding:10px;
   border:1px solid #315a80;border-radius:14px;background:#071523;color:#fff;
@@ -2233,6 +2236,11 @@ function isControllerContext(){
   const f=frag();
   return f.role==='controller'&&!!f.room;
 }
+function isHandheldGeneralContext(){
+  if(isControllerContext())return false;
+  const coarse=(navigator.maxTouchPoints||0)>0||matchMedia('(pointer:coarse)').matches;
+  return coarse&&matchMedia('(max-width:900px)').matches;
+}
 function modeLabel(m){return m==='2'?'2팀':m==='3'?'3팀':'개인'}
 function sigOf(s){
   return JSON.stringify({
@@ -2251,23 +2259,23 @@ function mountUi(){
   panel.id='bb4RemotePanel';
   panel.innerHTML=`<section class="bb4-remote-card" role="dialog" aria-modal="true" aria-labelledby="bb4RemoteTitle">
     <h3 id="bb4RemoteTitle">교회 원격 진행</h3>
-    <p id="bb4RemoteDesc">기존 4×4 화면은 그대로 사용하고, 휴대폰에서는 문제·정답·팀 색만 원격으로 조작합니다.</p>
-    <div id="bb4OwnerKeyWrap" style="margin:0 0 12px">
+    <p id="bb4RemoteDesc">방송 화면에서만 원격 연결을 시작합니다. 휴대폰은 방송 화면에서 만든 사회자 링크로 접속합니다.</p>
+    <div id="bb4OwnerKeyWrap" style="margin:0 0 12px" hidden>
       <button id="bb4OwnerKeyFileBtn" type="button"
         style="width:100%;min-height:44px;border:1px solid #ff9000;border-radius:10px;background:#ff9000;color:#07111d;font-size:13px;font-weight:950;cursor:pointer">
         이 방송실 기기 관리자 등록
       </button>
       <input id="bb4OwnerKeyFile" type="file" accept=".bb4remote-key,.json,text/plain,application/json" hidden>
       <div style="margin-top:6px;color:#8fa2b7;font-size:10px;line-height:1.4">
-        처음 한 번만 비공개 관리자 등록 파일을 선택합니다. 등록 후에는 이 버튼이 사라지고 평소 주소만 사용합니다.
+        방송 PC에서 처음 한 번만 비공개 관리자 등록 파일을 선택합니다. 휴대폰에서는 필요하지 않습니다.
       </div>
     </div>
     <div class="bb4-remote-status" id="bb4RemotePanelStatus">연결되지 않았습니다.</div>
     <div class="bb4-remote-actions">
-      <button class="primary wide" id="bb4RemoteConnectDisplay">방송 화면 원격 연결</button>
-      <button id="bb4RemoteCopy" disabled>사회자 링크 복사</button>
-      <button id="bb4RemoteRotate" disabled>새 연결키</button>
-      <button class="danger" id="bb4RemoteReset" disabled>전체 초기화</button>
+      <button class="primary wide" id="bb4RemoteConnectDisplay" hidden>방송 화면 원격 연결</button>
+      <button class="primary wide" id="bb4RemoteCopy" hidden>사회자 링크 복사</button>
+      <button id="bb4RemoteRotate" hidden>새 연결키</button>
+      <button class="danger" id="bb4RemoteReset" hidden>전체 초기화</button>
       <button id="bb4RemoteClose">닫기</button>
     </div>
   </section>`;
@@ -2293,7 +2301,8 @@ function mountUi(){
     try{
       await importOwnerKeyFile(file);
       syncOwnerKeyUi();
-      panelStatus('이 방송실 기기가 관리자 기기로 등록되었습니다. 이제 “방송 화면 원격 연결”을 누르세요.');
+      setPanelButtons();
+      panelStatus('관리자 등록이 완료되었습니다. 이제 “방송 화면 원격 연결”을 누르세요.');
       toast('관리자 등록이 완료되었습니다.');
     }catch(err){
       console.error(err);
@@ -2324,19 +2333,35 @@ function panelStatus(text){
   const el=document.getElementById('bb4RemotePanelStatus');if(el)el.textContent=text;
 }
 function setPanelButtons(){
+  const title=document.getElementById('bb4RemoteTitle');
+  const desc=document.getElementById('bb4RemoteDesc');
   const copy=document.getElementById('bb4RemoteCopy');
   const rotate=document.getElementById('bb4RemoteRotate');
   const reset=document.getElementById('bb4RemoteReset');
   const connect=document.getElementById('bb4RemoteConnectDisplay');
-  if(copy)copy.disabled=!(role==='display'&&connected);
-  if(rotate)rotate.disabled=!(role==='display'&&connected);
-  if(reset)reset.disabled=!(role==='controller'&&connected);
-  if(connect){
-    connect.hidden=role==='controller';
-    connect.textContent=connected&&role==='display'?'방송 화면 연결됨':'방송 화면 원격 연결';
-    connect.disabled=connected&&role==='display';
-  }
+  const close=document.getElementById('bb4RemoteClose');
+  const hasOwner=!!(localStorage.getItem(OWNER_KEY_STORE)||'').trim();
+  const isDisplay=role==='display';
+  const isController=role==='controller';
+
+  if(title)title.textContent=isController?'사회자 원격 진행':'교회 원격 진행';
+  if(desc)desc.textContent=isController
+    ?'이 휴대폰은 사회자 컨트롤 화면입니다. 문제 번호를 탭하면 방송 화면이 바로 진행됩니다.'
+    :'방송 화면에서만 원격 연결을 시작합니다. 연결 후 “사회자 링크 복사”를 눌러 휴대폰으로 보내세요.';
+
   syncOwnerKeyUi();
+  if(connect){
+    connect.hidden=!(isDisplay&&!connected&&hasOwner);
+    connect.disabled=false;
+    connect.textContent='방송 화면 원격 연결';
+  }
+  if(copy){copy.hidden=!(isDisplay&&connected);copy.disabled=false;}
+  if(rotate){rotate.hidden=!(isDisplay&&connected);rotate.disabled=false;}
+  if(reset){reset.hidden=!(isController&&connected);reset.disabled=false;}
+  if(close){
+    const visibleActions=[connect,copy,rotate,reset].filter(b=>b&&!b.hidden).length;
+    close.classList.toggle('wide',visibleActions===0||visibleActions===1);
+  }
 }
 function toast(text){
   const el=document.getElementById('bb4RemoteToast');if(!el)return;
@@ -2385,7 +2410,7 @@ function syncOwnerKeyUi(){
   const wrap=document.getElementById('bb4OwnerKeyWrap');
   if(!wrap)return;
   const has=!!(localStorage.getItem(OWNER_KEY_STORE)||'').trim();
-  wrap.style.display=(role==='controller'||has)?'none':'block';
+  wrap.hidden=!(role==='display'&&!has);
 }
 function currentPayload(){
   const s=api()?.getSnapshot?.();
@@ -2679,16 +2704,31 @@ function installControllerEvents(){
 
 mountUi();
 try{
+  if(isHandheldGeneralContext()){
+    role='handheld';
+    const badge=document.getElementById('bb4RemoteBadge');
+    const panel=document.getElementById('bb4RemotePanel');
+    if(badge)badge.hidden=true;
+    if(panel){panel.hidden=true;panel.classList.remove('is-open');}
+    return;
+  }
+
   await loadFirebase();
   if(isControllerContext()){
     await connectControllerFromUrl();
   }else{
+    role='display';
     const saved=jsonGet(OWNER_ROOM_STORE);
     if(saved?.room&&localStorage.getItem(OWNER_KEY_STORE)){
+      setPanelButtons();
       connectDisplay(true).catch(()=>{});
     }else{
       badgeState('원격');
-      panelStatus('방송 화면에서 원격을 사용할 때만 “방송 화면 원격 연결”을 누르세요.');
+      if(localStorage.getItem(OWNER_KEY_STORE)){
+        panelStatus('방송 화면에서 “방송 화면 원격 연결”을 누르세요.');
+      }else{
+        panelStatus('처음 한 번만 방송 PC를 관리자 기기로 등록한 뒤 원격 연결을 시작하세요.');
+      }
       setPanelButtons();
     }
   }
