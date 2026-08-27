@@ -2186,7 +2186,7 @@ if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)){
 render();
 })();
 </script>
-<!-- BB4_REMOTE_BEGIN_RUNTIME -->
+<!-- BB4_REMOTE_BEGIN_RUNTIME FINAL_V8_RECOVERY -->
 <script>
 (async()=>{
 'use strict';
@@ -2261,13 +2261,27 @@ function mountUi(){
     <h3 id="bb4RemoteTitle">교회 원격 진행</h3>
     <p id="bb4RemoteDesc">방송 화면에서만 원격 연결을 시작합니다. 휴대폰은 방송 화면에서 만든 사회자 링크로 접속합니다.</p>
     <div id="bb4OwnerKeyWrap" style="margin:0 0 12px" hidden>
-      <button id="bb4OwnerKeyFileBtn" type="button"
-        style="width:100%;min-height:44px;border:1px solid #ff9000;border-radius:10px;background:#ff9000;color:#07111d;font-size:13px;font-weight:950;cursor:pointer">
-        이 방송실 기기 관리자 등록
-      </button>
-      <input id="bb4OwnerKeyFile" type="file" accept=".bb4remote-key,.json,text/plain,application/json" hidden>
-      <div style="margin-top:6px;color:#8fa2b7;font-size:10px;line-height:1.4">
-        방송 PC에서 처음 한 번만 비공개 관리자 등록 파일을 선택합니다. 휴대폰에서는 필요하지 않습니다.
+      <div style="padding:12px;border:1px solid #315a80;border-radius:12px;background:#0a1b2c">
+        <div style="font-size:12px;font-weight:900;margin-bottom:8px">방송 PC 관리자 등록</div>
+        <input id="bb4OwnerKeyPaste" type="password" autocomplete="off" spellcheck="false"
+          placeholder="관리자 키를 여기에 붙여넣기"
+          style="width:100%;height:42px;padding:0 11px;border:1px solid #315a80;border-radius:9px;background:#071523;color:#fff;font-size:13px;outline:none">
+        <button id="bb4OwnerKeyPasteBtn" type="button"
+          style="width:100%;min-height:42px;margin-top:8px;border:1px solid #ff9000;border-radius:9px;background:#ff9000;color:#07111d;font-size:13px;font-weight:950;cursor:pointer">
+          붙여넣은 관리자 키 등록
+        </button>
+        <button id="bb4OwnerKeyFileBtn" type="button"
+          style="width:100%;min-height:40px;margin-top:8px;border:1px solid #315a80;border-radius:9px;background:#10253b;color:#fff;font-size:12px;font-weight:900;cursor:pointer">
+          또는 관리자 등록 파일 선택
+        </button>
+        <input id="bb4OwnerKeyFile" type="file" accept=".bb4remote-key,.json,text/plain,application/json" hidden>
+        <button id="bb4OwnerKeyClearBtn" type="button"
+          style="width:100%;min-height:36px;margin-top:8px;border:1px solid #6d3b42;border-radius:9px;background:#25171a;color:#ffc4c8;font-size:11px;font-weight:850;cursor:pointer">
+          기존 관리자 등록 지우기
+        </button>
+        <div id="bb4OwnerKeyHelp" style="margin-top:8px;color:#8fa2b7;font-size:10px;line-height:1.45">
+          관리자 키는 이 방송 PC의 브라우저에만 저장됩니다. 연결 실패 시 여기서 다시 등록할 수 있습니다.
+        </div>
       </div>
     </div>
     <div class="bb4-remote-status" id="bb4RemotePanelStatus">연결되지 않았습니다.</div>
@@ -2294,13 +2308,34 @@ function mountUi(){
   document.getElementById('bb4RemoteConnectDisplay').addEventListener('click',()=>connectDisplay(false));
   const ownerFileBtn=document.getElementById('bb4OwnerKeyFileBtn');
   const ownerFileInput=document.getElementById('bb4OwnerKeyFile');
+  const ownerPaste=document.getElementById('bb4OwnerKeyPaste');
+  const ownerPasteBtn=document.getElementById('bb4OwnerKeyPasteBtn');
+  const ownerClearBtn=document.getElementById('bb4OwnerKeyClearBtn');
   ownerFileBtn.addEventListener('click',()=>ownerFileInput.click());
+  ownerPasteBtn.addEventListener('click',()=>{
+    const key=String(ownerPaste?.value||'').trim();
+    if(!key||key.length<20){panelStatus('관리자 키가 비어 있거나 너무 짧습니다. 비공개 관리자 키 전체를 붙여넣으세요.');return;}
+    localStorage.setItem(OWNER_KEY_STORE,key);
+    localStorage.removeItem(OWNER_ROOM_STORE);
+    if(ownerPaste)ownerPaste.value='';
+    syncOwnerKeyUi(true);setPanelButtons();
+    panelStatus('관리자 키를 다시 등록했습니다. 이제 “방송 화면 원격 연결”을 누르세요.');
+    toast('관리자 등록이 완료되었습니다.');
+  });
+  ownerClearBtn.addEventListener('click',()=>{
+    localStorage.removeItem(OWNER_KEY_STORE);
+    localStorage.removeItem(OWNER_ROOM_STORE);
+    connected=false;roomId='';roomKey='';joinProof='';
+    syncOwnerKeyUi(true);setPanelButtons();
+    panelStatus('기존 관리자 등록을 지웠습니다. 관리자 키를 다시 붙여넣거나 등록 파일을 선택하세요.');
+  });
   ownerFileInput.addEventListener('change',async()=>{
     const file=ownerFileInput.files?.[0];
     if(!file)return;
     try{
       await importOwnerKeyFile(file);
-      syncOwnerKeyUi();
+      localStorage.removeItem(OWNER_ROOM_STORE);
+      syncOwnerKeyUi(true);
       setPanelButtons();
       panelStatus('관리자 등록이 완료되었습니다. 이제 “방송 화면 원격 연결”을 누르세요.');
       toast('관리자 등록이 완료되었습니다.');
@@ -2406,11 +2441,17 @@ function ownerKey(){
   if(!stored)throw new Error('NO_OWNER_KEY');
   return stored;
 }
-function syncOwnerKeyUi(){
+function syncOwnerKeyUi(forceShow=false){
   const wrap=document.getElementById('bb4OwnerKeyWrap');
   if(!wrap)return;
   const has=!!(localStorage.getItem(OWNER_KEY_STORE)||'').trim();
-  wrap.hidden=!(role==='display'&&!has);
+  wrap.hidden=!(role==='display'&&(!has||forceShow));
+  const clearBtn=document.getElementById('bb4OwnerKeyClearBtn');
+  if(clearBtn)clearBtn.hidden=!has;
+  const help=document.getElementById('bb4OwnerKeyHelp');
+  if(help)help.textContent=has
+    ?'이 브라우저에 관리자 키가 저장되어 있습니다. 연결이 실패하면 새 키를 붙여넣어 덮어쓰거나 기존 등록을 지우고 다시 등록하세요.'
+    :'처음 한 번만 비공개 관리자 키를 붙여넣거나 관리자 등록 파일을 선택하세요.';
 }
 function currentPayload(){
   const s=api()?.getSnapshot?.();
@@ -2481,11 +2522,11 @@ async function connectDisplay(auto){
   }catch(err){
     console.error(err);connected=false;
     const msg=String(err?.code||err?.message||'');
-    if(msg.includes('operation-not-allowed'))panelStatus('Firebase Authentication에서 익명 로그인을 먼저 켜야 합니다.');
-    else if(msg.includes('permission-denied'))panelStatus('관리자 키 또는 Firebase Security Rules가 맞지 않습니다.');
-    else if(msg.includes('NO_OWNER_KEY'))panelStatus('먼저 “이 방송실 기기 관리자 등록”을 눌러 비공개 등록 파일을 한 번 선택하세요.');
-    else panelStatus('원격 연결에 실패했습니다. Firebase 설정을 확인하세요.');
-    badgeState('원격 오류','is-bad');setPanelButtons();
+    if(msg.includes('operation-not-allowed'))panelStatus('Firebase 익명 로그인이 꺼져 있습니다. Authentication의 익명 로그인을 켜세요.');
+    else if(msg.includes('permission-denied'))panelStatus('관리자 키 또는 Firebase Security Rules가 맞지 않습니다. 아래에서 관리자 키를 다시 등록할 수 있습니다.');
+    else if(msg.includes('NO_OWNER_KEY'))panelStatus('관리자 키가 없습니다. 아래에 관리자 키를 붙여넣거나 등록 파일을 선택하세요.');
+    else panelStatus(`원격 연결에 실패했습니다. 아래에서 관리자 키를 다시 등록해 보세요.${msg?` (${msg.slice(0,80)})`:''}`);
+    badgeState('원격 오류','is-bad');setPanelButtons();syncOwnerKeyUi(true);
   }
 }
 async function publishState(force){
