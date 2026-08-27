@@ -1005,6 +1005,109 @@ button,input,textarea,select{font:inherit}button{cursor:pointer}button:focus-vis
   text-align:center;
 }
 
+
+/* ===== MOBILE DUAL MODE: private preview + live screen remote ===== */
+.mobile-presenter-modebar{
+  width:min(100%,560px);
+  margin:0 auto 12px;
+  padding:4px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:4px;
+  border:1px solid #244868;
+  border-radius:12px;
+  background:#081522;
+}
+.mobile-presenter-modebar button{
+  min-height:44px;
+  border:0;
+  border-radius:9px;
+  color:#aeb9c8;
+  background:transparent;
+  font-size:13px;
+  font-weight:950;
+}
+.mobile-presenter-modebar button.is-active{
+  color:#07111d;
+  background:#ff9000;
+}
+.mobile-presenter-remote-tools{
+  width:min(100%,560px);
+  margin:0 auto 12px;
+  padding:10px;
+  display:grid;
+  gap:8px;
+  border:1px solid #244868;
+  border-radius:12px;
+  background:#091827;
+}
+.mobile-presenter-remote-status{
+  color:#aebed0;
+  font-size:11px;
+  line-height:1.45;
+  font-weight:800;
+  text-align:center;
+}
+.mobile-presenter-mode-buttons{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:7px;
+}
+.mobile-presenter-mode-buttons button,
+.mobile-presenter-reset-remote{
+  min-height:42px;
+  border:1px solid #315a80;
+  border-radius:9px;
+  color:#f7f8fa;
+  background:#10253b;
+  font-size:13px;
+  font-weight:950;
+}
+.mobile-presenter-mode-buttons button.is-active{
+  color:#07111d;
+  border-color:#ff9000;
+  background:#ff9000;
+}
+.mobile-presenter-reset-remote{
+  color:#ffc8cd;
+  border-color:#6f3b43;
+  background:#28171b;
+}
+.mobile-presenter-remote-help{
+  margin:0;
+  color:#8698aa;
+  font-size:10px;
+  line-height:1.45;
+  text-align:center;
+}
+.mobile-presenter-cell.bb4-remote-current{
+  box-shadow:inset 0 0 0 2px rgba(255,144,0,.9),0 0 0 2px rgba(255,144,0,.22)!important;
+}
+.mobile-presenter-cell.bb4-remote-answer-visible{
+  border-color:#43d17a!important;
+}
+.mobile-presenter-question-mode{
+  color:#9eb0c4;
+  font-size:10px;
+  font-weight:900;
+}
+.mobile-presenter-answer-toggle.is-answer-showing{
+  color:#fff;
+  background:#2d8a58;
+}
+.mobile-presenter-question-settings{
+  flex:0 0 auto;
+  width:40px;
+  min-height:40px;
+  padding:0;
+  border:1px solid #315474;
+  border-radius:9px;
+  color:#fff;
+  background:#0b1b2f;
+  font-size:16px;
+  font-weight:900;
+}
+
 /* Existing admin remains the same on desktop/TV.
    Only make that same admin screen usable on a phone. */
 @media (max-width:1024px) and (pointer:coarse){
@@ -1041,7 +1144,7 @@ button,input,textarea,select{font:inherit}button{cursor:pointer}button:focus-vis
 <!-- BibleGoldenBell_4X4 FINAL MOBILE PRESENTER READ-ONLY 2026-08-23 -->
 <!-- BB4_REMOTE_BEGIN_CSS -->
 <!-- BB4 REMOTE FINAL v7 2026-08-26: role-separated UI, phone-general remote hidden -->
-<meta name="referrer" content="no-referrer">
+<meta name="referrer" content="no-referrer-when-downgrade">
 <style>
 /* Remote additions are fixed overlays only. They never participate in the existing app layout. */
 #bb4RemoteBadge{
@@ -1151,7 +1254,7 @@ const LOGO_DATA='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAWEAAADqCAYAAABz/
 const TYPE_LABELS={general:'일반·초성·빈칸',ox:'OX',image:'그림퀴즈',person:'인물퀴즈',video:'영상퀴즈',hidden:'숨은그림찾기'};
 const ANSWER_LABELS={short:'단답형',multiple:'4지선다'};
 const TEAM_META={1:{name:'1팀',color:'#f4a11a'},2:{name:'2팀',color:'#4e9be8'},3:{name:'3팀',color:'#8f7ee8'}};
-let adminIndex=0,adminPreviewMode='question',answerVisible=false,currentView='home',currentQuestion=0,autosaveTimer=null,miniEditSelection='1',mobilePreviewIndex=null,mobilePreviewAnswerVisible=false;
+let adminIndex=0,adminPreviewMode='question',answerVisible=false,currentView='home',currentQuestion=0,autosaveTimer=null,miniEditSelection='1',mobilePreviewIndex=null,mobilePreviewAnswerVisible=false,mobilePresenterMode=(new URLSearchParams(location.hash.replace(/^#/,''))).get('role')==='controller'?'remote':'preview';
 const mediaUrlCache=new Map();
 
 function emptyQuestion(n){return {number:n,type:'general',answerType:'short',question:'',answer:'',hint:'',choices:['','','',''],correctChoice:0,oxAnswer:'O',hiddenShowText:false,audioPlayback:'manual',answerAudioPlayback:'manual',videoPlayback:'manual',answerVideoPlayback:'manual',questionMediaLayout:'full',answerMediaLayout:'full',media:{questionImage:null,answerImage:null,video:null,answerVideo:null,audio:null,answerAudio:null},mediaNames:{}}}
@@ -1269,22 +1372,60 @@ function mobileQuestionHasContent(q){
   );
 }
 
+function mobileRemoteAvailable(){
+  const p=new URLSearchParams(location.hash.replace(/^#/,''));
+  return p.get('role')==='controller'&&!!p.get('room');
+}
+function setMobilePresenterMode(mode){
+  const next=(mode==='remote'&&mobileRemoteAvailable())?'remote':'preview';
+  mobilePresenterMode=next;
+  window.__BB4_PHONE_MODE__=next;
+  mobilePreviewIndex=null;
+  mobilePreviewAnswerVisible=false;
+  currentView='home';
+  render();
+}
+window.__BB4_PHONE_MODE__=mobilePresenterMode;
+
 function renderMobilePresenterBoard(){
   mobilePreviewIndex=null;
   mobilePreviewAnswerVisible=false;
 
+  const remoteAvailable=mobileRemoteAvailable();
+  if(!remoteAvailable&&mobilePresenterMode==='remote')mobilePresenterMode='preview';
+  window.__BB4_PHONE_MODE__=mobilePresenterMode;
+
+  const remoteState=window.__BB4_REMOTE_DISPLAY_STATE__||null;
+  const remoteMode=String(remoteState?.mode||state.settings.mode||'individual');
   const cells=state.questions.map((q,i)=>{
     const filled=mobileQuestionHasContent(q);
-    return `<button class="mobile-presenter-cell ${filled?'':'is-empty'}" data-mobile-preview="${i}" aria-label="${i+1}번 문제 미리보기">${i+1}</button>`;
+    return `<button class="mobile-presenter-cell ${filled?'':'is-empty'}" data-mobile-preview="${i}" aria-label="${i+1}번 문제">${i+1}</button>`;
   }).join('');
 
   const hasAny=state.questions.some(mobileQuestionHasContent);
+  const modeTabs=remoteAvailable?`<div class="mobile-presenter-modebar" role="tablist" aria-label="휴대폰 사용 모드">
+      <button type="button" data-phone-mode="preview" class="${mobilePresenterMode==='preview'?'is-active':''}">문제·답 보기</button>
+      <button type="button" data-phone-mode="remote" class="${mobilePresenterMode==='remote'?'is-active':''}">화면 리모콘</button>
+    </div>`:'';
+
+  const remoteTools=(remoteAvailable&&mobilePresenterMode==='remote')?`<section class="mobile-presenter-remote-tools">
+      <div class="mobile-presenter-remote-status" id="mobileRemoteInlineStatus">방송 화면과 동기화 중…</div>
+      <div class="mobile-presenter-mode-buttons">
+        <button type="button" data-remote-mode="individual" class="${remoteMode==='individual'?'is-active':''}">개인</button>
+        <button type="button" data-remote-mode="2" class="${remoteMode==='2'?'is-active':''}">2팀</button>
+        <button type="button" data-remote-mode="3" class="${remoteMode==='3'?'is-active':''}">3팀</button>
+      </div>
+      <button type="button" class="mobile-presenter-reset-remote" id="mobileRemoteReset">진행 상태 리셋</button>
+      <p class="mobile-presenter-remote-help">짧게 누르면 문제를 방송 화면에 열고, 팀전에서는 번호를 길게 눌러 팀 색을 지정·변경합니다.</p>
+    </section>`:'';
 
   document.getElementById('app').innerHTML=`<main class="mobile-presenter-shell">
     <header class="mobile-presenter-header">
-      <div class="mobile-presenter-title"><span>진행자 미리보기</span><strong>도전 바이블 골든벨</strong></div>
+      <div class="mobile-presenter-title"><span>${mobilePresenterMode==='remote'?'화면 리모콘':'문제·답 보기'}</span><strong>도전 바이블 골든벨</strong></div>
       <button class="mobile-presenter-settings" id="mobileSettings">⚙ 설정</button>
     </header>
+    ${modeTabs}
+    ${remoteTools}
     ${hasAny?'':`<p class="mobile-presenter-note">문제가 아직 없습니다. 위의 설정에서 관리자 모드로 들어가 데이터팩을 불러오세요.</p>`}
     <section class="mobile-presenter-board">${cells}</section>
   </main>`;
@@ -1292,6 +1433,19 @@ function renderMobilePresenterBoard(){
   document.getElementById('mobileSettings').addEventListener('click',()=>{
     currentView='admin';
     render();
+  });
+
+  document.querySelectorAll('[data-phone-mode]').forEach(btn=>{
+    btn.addEventListener('click',()=>setMobilePresenterMode(btn.dataset.phoneMode));
+  });
+
+  document.querySelectorAll('[data-remote-mode]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      window.dispatchEvent(new CustomEvent('bb4-mobile-remote-command',{detail:{action:'SET_MODE',mode:btn.dataset.remoteMode}}));
+    });
+  });
+  document.getElementById('mobileRemoteReset')?.addEventListener('click',()=>{
+    window.dispatchEvent(new CustomEvent('bb4-mobile-remote-command',{detail:{action:'RESET_PROGRESS'}}));
   });
 
   document.querySelectorAll('[data-mobile-preview]').forEach(btn=>{
@@ -1302,8 +1456,8 @@ function renderMobilePresenterBoard(){
       render();
     });
   });
+  setTimeout(()=>window.dispatchEvent(new CustomEvent('bb4-mobile-board-rendered')),0);
 }
-
 async function renderMobilePresenterQuestion(){
   const i=Number.isInteger(mobilePreviewIndex)?mobilePreviewIndex:0;
   const q=state.questions[i]||emptyQuestion(i+1);
@@ -1361,14 +1515,15 @@ async function renderMobilePresenterQuestion(){
   document.getElementById('app').innerHTML=`<main class="mobile-presenter-question-shell">
     <header class="mobile-presenter-question-header">
       <button class="mobile-presenter-back" id="mobileBackToBoard">← 문제판</button>
-      <span class="mobile-presenter-qno">${i+1}번 · ${mobilePreviewAnswerVisible?'정답':'문제'}</span>
+      <div style="display:grid;justify-items:center;gap:2px"><span class="mobile-presenter-qno">${i+1}번 · ${mobilePreviewAnswerVisible?'정답':'문제'}</span><span class="mobile-presenter-question-mode">${mobilePresenterMode==='remote'?'화면 리모콘':'문제·답 보기'}</span></div>
+      <button class="mobile-presenter-question-settings" id="mobileQuestionSettings" aria-label="설정">⚙</button>
     </header>
     <section class="mobile-presenter-content">
       <div class="mobile-presenter-kicker">${mobilePreviewAnswerVisible?'ANSWER':'QUESTION'}</div>
       ${body}
     </section>
     <div class="mobile-presenter-bottom">
-      <button class="mobile-presenter-answer-toggle" id="mobileAnswerToggle">${mobilePreviewAnswerVisible?'문제 다시 보기':'정답 보기'}</button>
+      <button class="mobile-presenter-answer-toggle ${mobilePreviewAnswerVisible?'is-answer-showing':''}" id="mobileAnswerToggle">${mobilePreviewAnswerVisible?'문제 다시 보기':'정답 보기'}</button>
     </div>
   </main>`;
 
@@ -1378,12 +1533,39 @@ async function renderMobilePresenterQuestion(){
     currentView='home';
     render();
   });
+  document.getElementById('mobileQuestionSettings')?.addEventListener('click',()=>{
+    currentView='admin';
+    render();
+  });
 
   document.getElementById('mobileAnswerToggle').addEventListener('click',()=>{
     mobilePreviewAnswerVisible=!mobilePreviewAnswerVisible;
     renderMobilePresenterQuestion();
   });
 }
+
+window.__BB4_MOBILE_APPLY_REMOTE_STATE__=function(remoteState){
+  window.__BB4_REMOTE_DISPLAY_STATE__=remoteState||null;
+  if(mobilePresenterMode!=='remote'||!remoteState)return;
+  const remoteView=String(remoteState.view||'home');
+  const remoteIndex=Number(remoteState.question);
+  const remoteAnswer=!!remoteState.answerVisible;
+
+  if(remoteView==='question'&&Number.isInteger(remoteIndex)&&remoteIndex>=0&&remoteIndex<16){
+    const changed=currentView!=='mobile-preview'||mobilePreviewIndex!==remoteIndex||mobilePreviewAnswerVisible!==remoteAnswer;
+    mobilePreviewIndex=remoteIndex;
+    mobilePreviewAnswerVisible=remoteAnswer;
+    currentView='mobile-preview';
+    if(changed)renderMobilePresenterQuestion();
+  }else if(remoteView==='home'&&currentView==='mobile-preview'){
+    mobilePreviewIndex=null;
+    mobilePreviewAnswerVisible=false;
+    currentView='home';
+    render();
+  }else if(currentView==='home'){
+    renderMobilePresenterBoard();
+  }
+};
 
 const BINGO_LINES=[
   [0,1,2,3],[4,5,6,7],[8,9,10,11],[12,13,14,15],
@@ -2160,6 +2342,16 @@ function remoteResetProgressNow(){
   render();
   return true;
 }
+function remoteSetMode(mode){
+  const m=String(mode||'individual');
+  if(!['individual','2','3'].includes(m))return false;
+  state.settings.mode=m;
+  saveState();
+  currentView='home';
+  answerVisible=false;
+  render();
+  return true;
+}
 window.__BB4_REMOTE_API__=Object.freeze({
   getSnapshot:remoteSnapshot,
   openQuestion:async index=>{
@@ -2172,7 +2364,8 @@ window.__BB4_REMOTE_API__=Object.freeze({
   board:remoteGoBoard,
   assignTeam:remoteAssignTeam,
   unclaim:remoteUnclaim,
-  resetProgress:remoteResetProgressNow
+  resetProgress:remoteResetProgressNow,
+  setMode:remoteSetMode
 });
 /* BB4_REMOTE_END_API */
 if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)){
@@ -2587,10 +2780,12 @@ async function connectControllerFromUrl(){
     }
 
     connected=true;
+    window.__BB4_PHONE_MODE__='remote';
     unsubState=fb.dbMod.onValue(
       fb.dbMod.ref(db,`rooms/${roomId}/state`),
       snap=>{
         displayState=snap.val()||null;
+        window.__BB4_REMOTE_DISPLAY_STATE__=displayState;
         if(!displayState){badgeState('방송 대기','is-warn');panelStatus('방송 화면 연결을 기다리는 중입니다.');return}
         const age=Date.now()-Number(displayState.updatedAt||0);
         const mine=api()?.getSnapshot?.();
@@ -2599,6 +2794,7 @@ async function connectControllerFromUrl(){
         else if(!samePack){badgeState('원격 연결','is-warn');panelStatus('방송 화면과 연결되었습니다. 다만 두 기기의 문제팩이 같은지 확인하세요.')}
         else{badgeState('원격 연결','is-ok');panelStatus(`사회자 연결됨 · ${modeLabel(displayState.mode)} · 문제 번호를 탭해 진행하세요.`)}
         decorateMobileBoard();
+        try{window.__BB4_MOBILE_APPLY_REMOTE_STATE__?.(displayState)}catch{}
       },
       ()=>{badgeState('권한 없음','is-bad');panelStatus('이 사회자 링크가 만료되었거나 권한이 없습니다. 새 링크를 받아주세요.')}
     );
@@ -2633,7 +2829,10 @@ async function applyCommand(cmd){
   let ok=false;
   if(cmd.action==='OPEN_QUESTION')ok=await a.openQuestion(Number(p.index));
   else if(cmd.action==='SET_ANSWER')ok=await a.setAnswerVisible(!!p.visible);
-  else if(cmd.action==='BOARD')ok=await a.board();
+  else if(cmd.action==='BOARD'){
+    if(p.mode)ok=await a.setMode?.(String(p.mode));
+    else ok=await a.board();
+  }
   else if(cmd.action==='ASSIGN_TEAM')ok=await a.assignTeam(Number(p.index),Number(p.team));
   else if(cmd.action==='UNCLAIM')ok=await a.unclaim(Number(p.index));
   else if(cmd.action==='RESET_PROGRESS')ok=await a.resetProgress();
@@ -2645,11 +2844,15 @@ function decorateMobileBoard(){
   if(role!=='controller'||!displayState)return;
   document.querySelectorAll('[data-mobile-preview]').forEach(btn=>{
     const i=Number(btn.dataset.mobilePreview);
-    btn.classList.remove('bb4-remote-visited','bb4-remote-owner-1','bb4-remote-owner-2','bb4-remote-owner-3');
+    btn.classList.remove('bb4-remote-visited','bb4-remote-owner-1','bb4-remote-owner-2','bb4-remote-owner-3','bb4-remote-current','bb4-remote-answer-visible');
     const owner=Number(displayState.progress?.owners?.[i]||0);
     const visited=displayState.progress?.visited?.[i]===true;
     if(visited)btn.classList.add('bb4-remote-visited');
     if(owner>=1&&owner<=3)btn.classList.add(`bb4-remote-owner-${owner}`);
+    if(String(displayState.view)==='question'&&Number(displayState.question)===i){
+      btn.classList.add('bb4-remote-current');
+      if(displayState.answerVisible)btn.classList.add('bb4-remote-answer-visible');
+    }
     btn.style.touchAction='manipulation';
     btn.style.webkitTouchCallout='none';
   });
@@ -2690,11 +2893,11 @@ function installControllerEvents(){
   controllerEventsInstalled=true;
 
   document.addEventListener('contextmenu',e=>{
-    if(role==='controller'&&connected&&e.target.closest?.('[data-mobile-preview]'))e.preventDefault();
+    if(role==='controller'&&connected&&window.__BB4_PHONE_MODE__==='remote'&&e.target.closest?.('[data-mobile-preview]'))e.preventDefault();
   },true);
 
   document.addEventListener('pointerdown',e=>{
-    if(role!=='controller'||!connected)return;
+    if(role!=='controller'||!connected||window.__BB4_PHONE_MODE__!=='remote')return;
     const btn=e.target.closest?.('[data-mobile-preview]');if(!btn)return;
     const idx=Number(btn.dataset.mobilePreview);if(!Number.isInteger(idx))return;
     longFired=false;longIndex=idx;clearTimeout(longTimer);
@@ -2710,7 +2913,7 @@ function installControllerEvents(){
   document.addEventListener('pointercancel',cancel,true);
 
   document.addEventListener('click',e=>{
-    if(role!=='controller'||!connected)return;
+    if(role!=='controller'||!connected||window.__BB4_PHONE_MODE__!=='remote')return;
     const cell=e.target.closest?.('[data-mobile-preview]');
     if(cell){
       const idx=Number(cell.dataset.mobilePreview);
@@ -2742,6 +2945,31 @@ function installControllerEvents(){
     mo.observe(app,{childList:true,subtree:true});
   }
 }
+
+
+window.addEventListener('bb4-mobile-remote-command',async e=>{
+  if(role!=='controller'||!connected||window.__BB4_PHONE_MODE__!=='remote')return;
+  const d=e.detail||{};
+  if(d.action==='SET_MODE'){
+    const mode=String(d.mode||'individual');
+    if(!['individual','2','3'].includes(mode))return;
+    try{await sendCommand('BOARD',{mode});toast(`${modeLabel(mode)} 모드로 전송했습니다.`)}
+    catch{toast('게임 모드 전송에 실패했습니다.')}
+    return;
+  }
+  if(d.action==='RESET_PROGRESS'){
+    if(!confirm('방송 화면의 문제 사용 표시와 팀 색을 모두 초기화할까요? 문제와 미디어 데이터는 지워지지 않습니다.'))return;
+    try{await sendCommand('RESET_PROGRESS',{ok:true});toast('전체 초기화를 전송했습니다.')}
+    catch{toast('전체 초기화 전송에 실패했습니다.')}
+  }
+});
+window.addEventListener('bb4-mobile-board-rendered',()=>{
+  if(role==='controller'&&connected&&window.__BB4_PHONE_MODE__==='remote'){
+    decorateMobileBoard();
+    const el=document.getElementById('mobileRemoteInlineStatus');
+    if(el&&displayState)el.textContent=`방송 화면 연결됨 · ${modeLabel(displayState.mode)} · ${displayState.view==='question'?`${Number(displayState.question)+1}번 ${displayState.answerVisible?'정답':'문제'}`:'문제판'}`;
+  }
+});
 
 mountUi();
 try{
