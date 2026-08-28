@@ -1,19 +1,68 @@
-const CACHE='biblegoldenbell-4x4-shell-v1';
-const SHELL=['./','./index.html','./manifest.webmanifest','./icons/icon-192.png','./icons/icon-512.png'];
+const CACHE='biblegoldenbell-4x4-shell-v28';
+const SHELL=[
+  './index.html',
+  './church-remote-final.html',
+  './icons/icon-192.png',
+  './icons/icon-512.png'
+];
+
 self.addEventListener('install',event=>{
-  event.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()));
+  event.waitUntil(
+    caches.open(CACHE)
+      .then(cache=>cache.addAll(SHELL))
+      .then(()=>self.skipWaiting())
+  );
 });
+
 self.addEventListener('activate',event=>{
-  event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));
+  event.waitUntil(
+    caches.keys()
+      .then(keys=>Promise.all(
+        keys
+          .filter(key=>key.startsWith('biblegoldenbell-4x4-shell-')&&key!==CACHE)
+          .map(key=>caches.delete(key))
+      ))
+      .then(()=>self.clients.claim())
+  );
 });
+
 self.addEventListener('fetch',event=>{
   const req=event.request;
-  if(req.method!=='GET'||new URL(req.url).origin!==location.origin)return;
+  const url=new URL(req.url);
+  if(req.method!=='GET'||url.origin!==location.origin)return;
+
+  const isHtmlNavigation = req.mode==='navigate' ||
+    url.pathname.endsWith('/') ||
+    url.pathname.endsWith('/index.html') ||
+    url.pathname.endsWith('/church-remote-final.html');
+
+  if(isHtmlNavigation){
+    event.respondWith(
+      fetch(req,{cache:'no-store'})
+        .then(resp=>{
+          if(resp&&resp.ok){
+            const copy=resp.clone();
+            caches.open(CACHE).then(cache=>cache.put(req,copy)).catch(()=>{});
+          }
+          return resp;
+        })
+        .catch(async()=>{
+          const exact=await caches.match(req);
+          return exact || await caches.match('./church-remote-final.html');
+        })
+    );
+    return;
+  }
+
   event.respondWith(
-    fetch(req).then(resp=>{
-      const copy=resp.clone();
-      caches.open(CACHE).then(c=>c.put(req,copy)).catch(()=>{});
-      return resp;
-    }).catch(()=>caches.match(req).then(r=>r||caches.match('./index.html')))
+    fetch(req)
+      .then(resp=>{
+        if(resp&&resp.ok){
+          const copy=resp.clone();
+          caches.open(CACHE).then(cache=>cache.put(req,copy)).catch(()=>{});
+        }
+        return resp;
+      })
+      .catch(()=>caches.match(req))
   );
 });

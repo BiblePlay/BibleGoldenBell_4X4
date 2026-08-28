@@ -1564,7 +1564,7 @@ function renderMobilePresenterBoard(){
 
   document.getElementById('app').innerHTML=`<main class="mobile-presenter-shell">
     <header class="mobile-presenter-header">
-      <div class="mobile-presenter-title"><span>${mobilePresenterMode==='remote'?'화면 리모콘':'문제·답 보기'}</span><strong>도전 바이블 골든벨</strong><small style="display:block;margin-top:3px;font-size:9px;font-weight:700;opacity:.55">v27 FINAL</small></div>
+      <div class="mobile-presenter-title"><span>${mobilePresenterMode==='remote'?'화면 리모콘':'문제·답 보기'}</span><strong>도전 바이블 골든벨</strong><small style="display:block;margin-top:3px;font-size:9px;font-weight:700;opacity:.55">v28 FINAL</small></div>
       <button class="mobile-presenter-settings" id="mobileSettings">⚙ 설정</button>
     </header>
     ${modeTabs}
@@ -2141,6 +2141,8 @@ function scheduleQuestionLayout(){
     cancelAnimationFrame(stableRaf);
     // Keep the final fitted inline sizes in place; only make the already-stable
     // answer visible. visibility/opacity never participate in layout geometry.
+    stage.style.visibility='';
+    stage.style.opacity='';
     stage.classList.remove('layout-pending');
   };
   const mediaReady=()=>{
@@ -2307,14 +2309,14 @@ async function renderQuestion(i){
       if(answerVideo)inside+=`<div class="answer-media"><video src="${answerVideo}" controls playsinline preload="metadata"></video></div>`;
       else if(aImg)inside+=`<div class="answer-media"><img src="${aImg}" alt="정답 이미지"></div>`;
       if(choiceText)inside+=`<div class="answer-choice-result"><span class="answer-choice-badge">${idx+1}</span><span class="answer-choice-text">${displayText(choiceText)}</span></div>`;
-      stage=`<section class="question-stage ${hasAnswerVisual?'visual-answer-stage answer-media-layout-'+q.answerMediaLayout+' layout-pending':''}"><div class="answer-direct multiple-answer ${hasAnswerVisual?'visual-answer':''}">${inside}</div></section>`;
+      stage=`<section class="question-stage ${hasAnswerVisual?'visual-answer-stage answer-media-layout-'+q.answerMediaLayout+' layout-pending':''}"${hasAnswerVisual?' style="visibility:hidden;opacity:0"':''}><div class="answer-direct multiple-answer ${hasAnswerVisual?'visual-answer':''}">${inside}</div></section>`;
     }else{
       const hasAnswerVisual=!!(answerVideo||aImg);
       let inside='';
       if(answerVideo)inside+=`<div class="answer-media"><video src="${answerVideo}" controls playsinline preload="metadata"></video></div>`;
       else if(aImg)inside+=`<div class="answer-media"><img src="${aImg}" alt="정답 이미지"></div>`;
       if(ans)inside+=`<div class="answer-text ${answerSize}">${displayText(ans)}</div>`;
-      stage=`<section class="question-stage ${hasAnswerVisual?'visual-answer-stage answer-media-layout-'+q.answerMediaLayout+' layout-pending':''}"><div class="answer-direct ${hasAnswerVisual?'visual-answer':''}">${inside}</div></section>`;
+      stage=`<section class="question-stage ${hasAnswerVisual?'visual-answer-stage answer-media-layout-'+q.answerMediaLayout+' layout-pending':''}"${hasAnswerVisual?' style="visibility:hidden;opacity:0"':''}><div class="answer-direct ${hasAnswerVisual?'visual-answer':''}">${inside}</div></section>`;
     }
   }
 
@@ -2797,7 +2799,7 @@ const LEGACY_REMOTE_KEYS=[
   'bb4_remote_owner_room_session_v1','bb4_remote_owner_key_session_v1','bb4_remote_controller_room_session_v1',
   'bb4_remote_owner_room_v3','bb4_remote_owner_key_v3','bb4_remote_controller_room_v3'
 ];
-const BB4_REMOTE_BUILD='v27-visual-answer-stable-first-paint-2026-08-28';
+const BB4_REMOTE_BUILD='v28-canonical-entry-cache-guard-2026-08-28';
 const BB4_ALLOWED_ORIGIN='https://bibleplay.github.io';
 const BB4_ALLOWED_PATH_PREFIX='/BibleGoldenBell_4X4/';
 
@@ -3431,7 +3433,7 @@ window.__BB4_DELETE_CONTROLLER_REGISTRATION_BY_UID__=deleteControllerRegistratio
 
 function controllerUrl(){
   const u=new URL(location.href);
-  u.searchParams.set('bb4remote','v25');
+  u.searchParams.set('bb4remote','v28');
   u.hash=new URLSearchParams({role:'controller',room:roomId,key:roomKey}).toString();
   return u.toString();
 }
