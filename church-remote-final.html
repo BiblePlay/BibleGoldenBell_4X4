@@ -1564,7 +1564,7 @@ function renderMobilePresenterBoard(){
 
   document.getElementById('app').innerHTML=`<main class="mobile-presenter-shell">
     <header class="mobile-presenter-header">
-      <div class="mobile-presenter-title"><span>${mobilePresenterMode==='remote'?'화면 리모콘':'문제·답 보기'}</span><strong>도전 바이블 골든벨</strong><small style="display:block;margin-top:3px;font-size:9px;font-weight:700;opacity:.55">v29 FINAL</small></div>
+      <div class="mobile-presenter-title"><span>${mobilePresenterMode==='remote'?'화면 리모콘':'문제·답 보기'}</span><strong>도전 바이블 골든벨</strong><small style="display:block;margin-top:3px;font-size:9px;font-weight:700;opacity:.55">v30 FINAL</small></div>
       <button class="mobile-presenter-settings" id="mobileSettings">⚙ 설정</button>
     </header>
     ${modeTabs}
@@ -2290,7 +2290,7 @@ async function renderQuestion(i){
       let hidden='';
       if(qImg)hidden+=`<div class="media-stage"><img src="${qImg}" alt="숨은그림 문제"></div>`;
       if(q.hiddenShowText&&qt)hidden+=`<div class="question-text">${displayText(qt)}</div>`;
-      stage=`<section class="question-stage hidden-stage ${qImg?'visual-question media-layout-'+q.questionMediaLayout:''}">${hidden}</section>`;
+      stage=`<section class="question-stage hidden-stage ${qImg?'visual-question media-layout-'+q.questionMediaLayout:''} layout-pending" style="visibility:hidden;opacity:0">${hidden}</section>`;
     }else{
       let content='';
       if(q.hint)content+=`<div class="hint">힌트 · ${displayText(q.hint)}</div>`;
@@ -2303,8 +2303,8 @@ async function renderQuestion(i){
         const filledChoices=(q.choices||[]).map((c,n)=>({c:String(c||'').trim(),n})).filter(x=>x.c);
         if(filledChoices.length)content+=`<div class="choices">${filledChoices.map(x=>`<div class="choice"><span class="n">${x.n+1}</span><span>${displayText(x.c)}</span></div>`).join('')}</div>`;
       }
-      const cls=['question-stage',hasVisualMedia?'visual-question':'',hasVisualMedia?'media-layout-'+q.questionMediaLayout:'',hasChoices?'choice-question':''].filter(Boolean).join(' ');
-      stage=`<section class="${cls}">${content}</section>`;
+      const cls=['question-stage',hasVisualMedia?'visual-question':'',hasVisualMedia?'media-layout-'+q.questionMediaLayout:'',hasChoices?'choice-question':'','layout-pending'].filter(Boolean).join(' ');
+      stage=`<section class="${cls}" style="visibility:hidden;opacity:0">${content}</section>`;
     }
   }else{
     const isMultiple=q.answerType==='multiple'&&q.type!=='ox';
@@ -2321,14 +2321,14 @@ async function renderQuestion(i){
       if(answerVideo)inside+=`<div class="answer-media"><video src="${answerVideo}" controls playsinline preload="metadata"></video></div>`;
       else if(aImg)inside+=`<div class="answer-media"><img src="${aImg}" alt="정답 이미지"></div>`;
       if(choiceText)inside+=`<div class="answer-choice-result"><span class="answer-choice-badge">${idx+1}</span><span class="answer-choice-text">${displayText(choiceText)}</span></div>`;
-      stage=`<section class="question-stage ${hasAnswerVisual?'visual-answer-stage answer-media-layout-'+q.answerMediaLayout+' layout-pending':''}"${hasAnswerVisual?' style="visibility:hidden;opacity:0"':''}><div class="answer-direct multiple-answer ${hasAnswerVisual?'visual-answer':''}">${inside}</div></section>`;
+      stage=`<section class="question-stage ${hasAnswerVisual?'visual-answer-stage answer-media-layout-'+q.answerMediaLayout:''} layout-pending" style="visibility:hidden;opacity:0"><div class="answer-direct multiple-answer ${hasAnswerVisual?'visual-answer':''}">${inside}</div></section>`;
     }else{
       const hasAnswerVisual=!!(answerVideo||aImg);
       let inside='';
       if(answerVideo)inside+=`<div class="answer-media"><video src="${answerVideo}" controls playsinline preload="metadata"></video></div>`;
       else if(aImg)inside+=`<div class="answer-media"><img src="${aImg}" alt="정답 이미지"></div>`;
       if(ans)inside+=`<div class="answer-text ${answerSize}">${displayText(ans)}</div>`;
-      stage=`<section class="question-stage ${hasAnswerVisual?'visual-answer-stage answer-media-layout-'+q.answerMediaLayout+' layout-pending':''}"${hasAnswerVisual?' style="visibility:hidden;opacity:0"':''}><div class="answer-direct ${hasAnswerVisual?'visual-answer':''}">${inside}</div></section>`;
+      stage=`<section class="question-stage ${hasAnswerVisual?'visual-answer-stage answer-media-layout-'+q.answerMediaLayout:''} layout-pending" style="visibility:hidden;opacity:0"><div class="answer-direct ${hasAnswerVisual?'visual-answer':''}">${inside}</div></section>`;
     }
   }
 
@@ -2348,17 +2348,8 @@ async function renderQuestion(i){
     <footer class="question-footer">${answerVisible?`<button class="board-quick-button" id="quickBoardBtn" title="문제판으로" aria-label="문제판으로">${boardGridSvg()}</button>`:''}<button id="answerBtn">${answerVisible?'문제 다시 보기':'정답 보기'}</button></footer>
   </main></div>`;
 
-  // v29: every dynamically fitted question/answer is hidden before the browser gets a paint opportunity.
-  // It is revealed only after scheduleQuestionLayout() has measured the final media/text geometry.
-  const freshlyRenderedStage=document.querySelector('.question-stage');
-  if(freshlyRenderedStage&&!freshlyRenderedStage.querySelector('.ox-answer')){
-    const needsDynamicFit=!!freshlyRenderedStage.querySelector('.question-text,.answer-text,.answer-choice-text,.media-stage img,.media-stage video,.answer-media img,.answer-media video');
-    if(needsDynamicFit){
-      freshlyRenderedStage.classList.add('layout-pending');
-      freshlyRenderedStage.style.visibility='hidden';
-      freshlyRenderedStage.style.opacity='0';
-    }
-  }
+  // v30: every dynamically fitted stage is born hidden in its HTML markup itself.
+  // No question/answer text or media can be painted at CSS-default geometry before fitting.
 
   document.getElementById('boardBtn').addEventListener('click',async()=>{
     const wanted=!!document.fullscreenElement;
