@@ -189,7 +189,7 @@ button,input,textarea,select{font:inherit}button{cursor:pointer}button:focus-vis
 }
 /* v25: keep visual answers hidden until image/video dimensions are known and the final layout is measured.
    This prevents a one-frame oversized answer-text flash before the answer media is fitted. */
-.question-stage.visual-answer-stage.layout-pending{visibility:hidden}
+.question-stage.visual-answer-stage.layout-pending{visibility:hidden !important;opacity:0 !important}
 /* 4-choice answer mirrors the question's number-badge visual language. */
 .answer-direct.multiple-answer .answer-choice-result{
   width:min(980px,92%);min-height:116px;padding:20px 28px;
@@ -1564,7 +1564,7 @@ function renderMobilePresenterBoard(){
 
   document.getElementById('app').innerHTML=`<main class="mobile-presenter-shell">
     <header class="mobile-presenter-header">
-      <div class="mobile-presenter-title"><span>${mobilePresenterMode==='remote'?'화면 리모콘':'문제·답 보기'}</span><strong>도전 바이블 골든벨</strong><small style="display:block;margin-top:3px;font-size:9px;font-weight:700;opacity:.55">v26 FINAL</small></div>
+      <div class="mobile-presenter-title"><span>${mobilePresenterMode==='remote'?'화면 리모콘':'문제·답 보기'}</span><strong>도전 바이블 골든벨</strong><small style="display:block;margin-top:3px;font-size:9px;font-weight:700;opacity:.55">v27 FINAL</small></div>
       <button class="mobile-presenter-settings" id="mobileSettings">⚙ 설정</button>
     </header>
     ${modeTabs}
@@ -1850,8 +1850,12 @@ function undoClaim(){if(!progress.lastClaim)return;const {index,previous}=progre
 function celebrate(team){const meta=TEAM_META[team]||TEAM_META[1],ov=document.createElement('div');ov.className='bingo-celebration';let conf='';for(let i=0;i<80;i++){const colors=[meta.color,'#fff','#ffcf70','#43d17a','#6ca8ff'];conf+=`<i class="confetti-piece" style="left:${(i*37)%100}%;background:${colors[i%colors.length]};animation-delay:${(i%12)*.04}s;transform:rotate(${i*43%180}deg)"></i>`}ov.innerHTML=conf+`<div class="bingo-card"><span>${meta.name}</span><strong>BINGO!</strong></div>`;document.body.appendChild(ov);setTimeout(()=>ov.remove(),3250)}
 
 // Unified measured question layout engine. One observer, one fitting path.
-let questionLayoutObserver=null;
+// v27: each scheduled layout pass is scoped to the exact stage that created it.
+// This prevents a late rAF/ResizeObserver callback from a previous question from
+// touching a newly-rendered answer and causing a one-frame size flash.
+let questionLayoutObserver=null,questionLayoutEpoch=0;
 function stopQuestionLayoutObserver(){
+  questionLayoutEpoch++;
   try{questionLayoutObserver?.disconnect()}catch{}
   questionLayoutObserver=null;
 }
@@ -2099,9 +2103,9 @@ function fitPlainAnswer(stage){
   fitTextWithin(textEl,92,30,innerH,1.14);
 }
 
-function fitQuestionLayout(){
-  const stage=document.querySelector('.question-stage');
-  if(!stage)return;
+function fitQuestionLayout(targetStage=null){
+  const stage=targetStage||document.querySelector('.question-stage');
+  if(!stage||!stage.isConnected)return;
   if(answerVisible){
     const answerMedia=stage.querySelector('.answer-media');
     if(answerMedia){answerMedia.style.width='';answerMedia.style.height='';answerMedia.style.flex=''}
@@ -2125,40 +2129,116 @@ function scheduleQuestionLayout(){
   stopQuestionLayoutObserver();
   const stage=document.querySelector('.question-stage');
   if(!stage)return;
-  let raf=0,revealed=!stage.classList.contains('layout-pending');
+  const epoch=++questionLayoutEpoch;
+  let raf=0,stableRaf=0,stabilizing=false,revealed=!stage.classList.contains('layout-pending');
   const visualMedia=stage.querySelector('.answer-media img,.answer-media video');
+  let mediaPrepared=!visualMedia;
+  const isActive=()=>epoch===questionLayoutEpoch&&stage.isConnected;
   const reveal=()=>{
-    if(revealed)return;
+    if(revealed||!isActive())return;
     revealed=true;
+    stabilizing=false;
+    cancelAnimationFrame(stableRaf);
+    // Keep the final fitted inline sizes in place; only make the already-stable
+    // answer visible. visibility/opacity never participate in layout geometry.
     stage.classList.remove('layout-pending');
   };
   const mediaReady=()=>{
     if(!visualMedia)return true;
-    return !!naturalMediaSize(visualMedia);
+    return mediaPrepared&&!!naturalMediaSize(visualMedia);
+  };
+  const visualSignature=()=>{
+    const direct=stage.querySelector('.answer-direct.visual-answer');
+    const mediaStage=direct?.querySelector('.answer-media');
+    const textEl=direct?.querySelector('.answer-text');
+    const choiceText=direct?.querySelector('.answer-choice-text');
+    const mediaRect=mediaStage?.getBoundingClientRect();
+    const textTarget=textEl||choiceText;
+    const fontSize=textTarget?px(getComputedStyle(textTarget).fontSize):0;
+    const textHeight=textTarget?Math.max(textTarget.scrollHeight,textTarget.getBoundingClientRect().height):0;
+    return [
+      stage.clientWidth,stage.clientHeight,
+      direct?.clientHeight||0,
+      Math.round((mediaRect?.width||0)*10)/10,
+      Math.round((mediaRect?.height||0)*10)/10,
+      Math.round(fontSize*10)/10,
+      Math.round(textHeight*10)/10
+    ].join('|');
+  };
+  const stabilizeVisualAnswer=()=>{
+    if(revealed||stabilizing||!isActive()||!mediaReady())return;
+    stabilizing=true;
+    let last='',stableFrames=0,totalFrames=0;
+    const step=()=>{
+      if(!isActive()||revealed){stabilizing=false;return}
+      fitQuestionLayout(stage);
+      const sig=visualSignature();
+      stableFrames=(sig===last)?stableFrames+1:0;
+      last=sig;
+      totalFrames++;
+      // Require the exact media/text geometry to survive several paint opportunities.
+      // This covers cached images, slow decode, and delayed viewport/layout settling.
+      if(stableFrames>=3||totalFrames>=18){
+        fitQuestionLayout(stage);
+        requestAnimationFrame(()=>{
+          if(!isActive())return;
+          fitQuestionLayout(stage);
+          reveal();
+        });
+        return;
+      }
+      stableRaf=requestAnimationFrame(step);
+    };
+    stableRaf=requestAnimationFrame(step);
   };
   const run=()=>{
+    if(!isActive())return;
     cancelAnimationFrame(raf);
     raf=requestAnimationFrame(()=>requestAnimationFrame(()=>{
-      fitQuestionLayout();
-      // Reveal a visual answer only after the media has real dimensions and the fitted
-      // image+text layout has already been applied in this same paint cycle.
-      if(mediaReady())reveal();
+      if(!isActive())return;
+      fitQuestionLayout(stage);
+      if(!revealed&&mediaReady())stabilizeVisualAnswer();
     }));
   };
   run();
   stage.querySelectorAll('img').forEach(el=>{
-    if(!el.complete)el.addEventListener('load',run,{once:true});
-    else if(el.naturalWidth>0)run();
-    el.addEventListener('error',()=>{run();setTimeout(reveal,0)},{once:true});
+    const afterImageReady=()=>{
+      if(!isActive())return;
+      const finish=()=>{mediaPrepared=true;run();stabilizeVisualAnswer()};
+      if(typeof el.decode==='function')el.decode().catch(()=>{}).finally(finish);
+      else finish();
+    };
+    if(!el.complete)el.addEventListener('load',afterImageReady,{once:true});
+    else if(el.naturalWidth>0)afterImageReady();
+    el.addEventListener('error',()=>{
+      if(!isActive())return;
+      mediaPrepared=true;
+      fitQuestionLayout(stage);
+      reveal();
+    },{once:true});
   });
   stage.querySelectorAll('video').forEach(el=>{
-    if(el.readyState<1)el.addEventListener('loadedmetadata',run,{once:true});
-    else run();
-    el.addEventListener('error',()=>{run();setTimeout(reveal,0)},{once:true});
+    const afterVideoReady=()=>{if(isActive()){mediaPrepared=true;run();stabilizeVisualAnswer()}};
+    if(el.readyState<1)el.addEventListener('loadedmetadata',afterVideoReady,{once:true});
+    else afterVideoReady();
+    el.addEventListener('error',()=>{
+      if(!isActive())return;
+      mediaPrepared=true;
+      fitQuestionLayout(stage);
+      reveal();
+    },{once:true});
   });
-  // Broken or unusually slow media must never leave the answer permanently blank.
-  if(!revealed)setTimeout(()=>{fitQuestionLayout();reveal()},1200);
-  if('ResizeObserver' in window){questionLayoutObserver=new ResizeObserver(run);questionLayoutObserver.observe(stage)}
+  // Fail-safe only: normal visual answers reveal through the stable-layout path above.
+  // A broken/blocked media resource must not leave the entire answer permanently blank.
+  if(!revealed)setTimeout(()=>{
+    if(!isActive()||revealed)return;
+    fitQuestionLayout(stage);
+    reveal();
+  },4000);
+  if('ResizeObserver' in window){
+    questionLayoutObserver=new ResizeObserver(()=>{if(isActive())run()});
+    questionLayoutObserver.observe(stage);
+  }
 }
 
 let questionRenderGeneration=0;
@@ -2717,7 +2797,7 @@ const LEGACY_REMOTE_KEYS=[
   'bb4_remote_owner_room_session_v1','bb4_remote_owner_key_session_v1','bb4_remote_controller_room_session_v1',
   'bb4_remote_owner_room_v3','bb4_remote_owner_key_v3','bb4_remote_controller_room_v3'
 ];
-const BB4_REMOTE_BUILD='v25-answer-visual-flash-fix-final-2026-08-28';
+const BB4_REMOTE_BUILD='v27-visual-answer-stable-first-paint-2026-08-28';
 const BB4_ALLOWED_ORIGIN='https://bibleplay.github.io';
 const BB4_ALLOWED_PATH_PREFIX='/BibleGoldenBell_4X4/';
 
