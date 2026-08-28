@@ -1561,7 +1561,7 @@ function renderMobilePresenterBoard(){
 
   document.getElementById('app').innerHTML=`<main class="mobile-presenter-shell">
     <header class="mobile-presenter-header">
-      <div class="mobile-presenter-title"><span>${mobilePresenterMode==='remote'?'화면 리모콘':'문제·답 보기'}</span><strong>도전 바이블 골든벨</strong><small style="display:block;margin-top:3px;font-size:9px;font-weight:700;opacity:.55">v22 FINAL</small></div>
+      <div class="mobile-presenter-title"><span>${mobilePresenterMode==='remote'?'화면 리모콘':'문제·답 보기'}</span><strong>도전 바이블 골든벨</strong><small style="display:block;margin-top:3px;font-size:9px;font-weight:700;opacity:.55">v23 FINAL</small></div>
       <button class="mobile-presenter-settings" id="mobileSettings">⚙ 설정</button>
     </header>
     ${modeTabs}
@@ -2678,7 +2678,7 @@ const LEGACY_REMOTE_KEYS=[
   'bb4_remote_owner_room_session_v1','bb4_remote_owner_key_session_v1','bb4_remote_controller_room_session_v1',
   'bb4_remote_owner_room_v3','bb4_remote_owner_key_v3','bb4_remote_controller_room_v3'
 ];
-const BB4_REMOTE_BUILD='v22-final-audited-2026-08-28';
+const BB4_REMOTE_BUILD='v23-galaxy-longpress-popup-final-2026-08-28';
 const BB4_ALLOWED_ORIGIN='https://bibleplay.github.io';
 const BB4_ALLOWED_PATH_PREFIX='/BibleGoldenBell_4X4/';
 
@@ -3277,7 +3277,7 @@ window.__BB4_DELETE_CONTROLLER_REGISTRATION_BY_UID__=deleteControllerRegistratio
 
 function controllerUrl(){
   const u=new URL(location.href);
-  u.searchParams.set('bb4remote','v22');
+  u.searchParams.set('bb4remote','v23');
   u.hash=new URLSearchParams({role:'controller',room:roomId,key:roomKey}).toString();
   return u.toString();
 }
@@ -3572,8 +3572,13 @@ function decorateMobileBoard(){
       btn.classList.add('bb4-remote-current');
       if(displayState.answerVisible)btn.classList.add('bb4-remote-answer-visible');
     }
-    btn.style.touchAction='manipulation';
+    const teamRemote=window.__BB4_PHONE_MODE__==='remote'&&String(displayState?.mode||'individual')!=='individual';
+    // In team remote mode the cell itself must own the gesture.  Android browsers can
+    // otherwise cancel a long press as a scroll/gesture before our timer fires.
+    btn.style.touchAction=teamRemote?'none':'manipulation';
     btn.style.webkitTouchCallout='none';
+    btn.style.userSelect='none';
+    btn.style.webkitUserSelect='none';
   });
 }
 function closePicker(){
@@ -3600,13 +3605,50 @@ function openPicker(index,btn){
     await sendCommand('UNCLAIM',{index});closePicker();toast(`${index+1}번 팀 색 해제를 전송했습니다.`);
   });
   const r=btn.getBoundingClientRect();
-  const w=230,h=210;
-  picker.style.left=Math.max(8,Math.min(innerWidth-w,r.left))+'px';
-  picker.style.top=Math.max(8,Math.min(innerHeight-h,r.bottom+8))+'px';
+  const gap=8,edge=8;
+  // Measure the real picker instead of assuming a fixed size.  This keeps the picker
+  // beside the pressed number on Galaxy/iPad and prevents large jumps near screen edges.
+  picker.style.visibility='hidden';
+  picker.style.left='0px';
+  picker.style.top='0px';
   picker.classList.add('is-open');
+  const pr=picker.getBoundingClientRect();
+  const vw=window.innerWidth||document.documentElement.clientWidth;
+  const vh=window.innerHeight||document.documentElement.clientHeight;
+  let left,top;
+  if(r.right+gap+pr.width<=vw-edge){
+    left=r.right+gap;
+    top=r.top+(r.height-pr.height)/2;
+  }else if(r.left-gap-pr.width>=edge){
+    left=r.left-gap-pr.width;
+    top=r.top+(r.height-pr.height)/2;
+  }else{
+    left=r.left+(r.width-pr.width)/2;
+    if(r.bottom+gap+pr.height<=vh-edge)top=r.bottom+gap;
+    else top=r.top-gap-pr.height;
+  }
+  left=Math.max(edge,Math.min(vw-pr.width-edge,left));
+  top=Math.max(edge,Math.min(vh-pr.height-edge,top));
+  picker.style.left=Math.round(left)+'px';
+  picker.style.top=Math.round(top)+'px';
+  picker.style.visibility='visible';
 }
 
 let controllerEventsInstalled=false;
+let longPointerId=null,longStartX=0,longStartY=0,longButton=null,longStartedAt=0;
+function clearLongPressTracking(release=true){
+  clearTimeout(longTimer);longTimer=null;
+  if(release&&longButton&&longPointerId!=null){
+    try{if(longButton.hasPointerCapture?.(longPointerId))longButton.releasePointerCapture(longPointerId)}catch{}
+  }
+  longPointerId=null;longButton=null;longStartedAt=0;
+}
+function fireLongPress(idx,btn){
+  if(String(displayState?.mode||'individual')==='individual')return;
+  longFired=true;longIndex=idx;longTimer=null;
+  try{navigator.vibrate?.(25)}catch{}
+  openPicker(idx,btn);
+}
 function installControllerEvents(){
   if(controllerEventsInstalled)return;
   controllerEventsInstalled=true;
@@ -3617,19 +3659,35 @@ function installControllerEvents(){
 
   document.addEventListener('pointerdown',e=>{
     if(role!=='controller'||!connected||window.__BB4_PHONE_MODE__!=='remote')return;
+    if(e.pointerType==='mouse'&&e.button!==0)return;
     const btn=e.target.closest?.('[data-mobile-preview]');if(!btn)return;
     const idx=Number(btn.dataset.mobilePreview);if(!Number.isInteger(idx))return;
-    longFired=false;longIndex=idx;clearTimeout(longTimer);
-    longTimer=setTimeout(()=>{
-      if(String(displayState?.mode||'individual')==='individual')return;
-      longFired=true;
-      try{navigator.vibrate?.(25)}catch{}
-      openPicker(idx,btn);
-    },580);
+    clearLongPressTracking();
+    longFired=false;longIndex=idx;
+    longPointerId=e.pointerId;longStartX=e.clientX;longStartY=e.clientY;longButton=btn;longStartedAt=performance.now();
+    try{btn.setPointerCapture?.(e.pointerId)}catch{}
+    longTimer=setTimeout(()=>fireLongPress(idx,btn),520);
   },true);
-  const cancel=()=>{clearTimeout(longTimer);longTimer=null};
-  document.addEventListener('pointerup',cancel,true);
-  document.addEventListener('pointercancel',cancel,true);
+  document.addEventListener('pointermove',e=>{
+    if(longTimer==null||e.pointerId!==longPointerId)return;
+    const dx=e.clientX-longStartX,dy=e.clientY-longStartY;
+    // Allow normal finger jitter, but cancel if the user clearly drags away.
+    if(dx*dx+dy*dy>22*22)clearLongPressTracking();
+  },true);
+  document.addEventListener('pointerup',e=>{
+    if(e.pointerId===longPointerId)clearLongPressTracking();
+  },true);
+  document.addEventListener('pointercancel',e=>{
+    if(e.pointerId!==longPointerId)return;
+    // Android may emit pointercancel for a long hold. If the hold is already essentially
+    // complete and the finger did not drag, honor it instead of silently losing the action.
+    const elapsed=performance.now()-longStartedAt;
+    const btn=longButton,idx=longIndex;
+    if(longTimer!=null&&btn&&elapsed>=470){
+      clearLongPressTracking(false);
+      fireLongPress(idx,btn);
+    }else clearLongPressTracking(false);
+  },true);
 
   document.addEventListener('click',e=>{
     if(role!=='controller'||!connected||window.__BB4_PHONE_MODE__!=='remote')return;
