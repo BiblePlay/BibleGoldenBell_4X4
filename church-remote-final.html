@@ -983,12 +983,37 @@ button,input,textarea,select{font:inherit}button{cursor:pointer}button:focus-vis
   bottom:0;
   z-index:25;
   padding:10px 14px max(10px,env(safe-area-inset-bottom));
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
   border-top:1px solid #183453;
   background:rgba(6,17,31,.97);
   backdrop-filter:blur(10px);
 }
+.mobile-presenter-board-quick{
+  flex:0 0 58px;
+  width:58px;
+  min-height:52px;
+  display:grid;
+  place-items:center;
+  border:1px solid #315474;
+  border-radius:11px;
+  color:#fff;
+  background:#0b1b2f;
+}
+.mobile-presenter-board-quick svg{
+  width:24px;
+  height:24px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.8;
+}
 .mobile-presenter-answer-toggle{
-  width:100%;
+  width:auto;
+  flex:0 1 52%;
+  max-width:240px;
+  min-width:0;
   min-height:52px;
   border:0;
   border-radius:11px;
@@ -1252,6 +1277,29 @@ button,input,textarea,select{font:inherit}button{cursor:pointer}button:focus-vis
   box-shadow:0 10px 30px rgba(0,0,0,.4)
 }
 #bb4RemoteToast.is-open{display:block}
+
+#bb4DeviceIdentifyFlash{
+  position:fixed;inset:0;z-index:100020;pointer-events:none;opacity:0;
+  border:7px solid rgba(255,153,0,.96);
+  box-shadow:inset 0 0 0 7px rgba(255,255,255,.90),inset 0 0 44px rgba(255,153,0,.62);
+}
+#bb4DeviceIdentifyFlash.is-active{animation:bb4IdentifyFlash .42s ease-in-out 0s 6 alternate}
+@keyframes bb4IdentifyFlash{from{opacity:.08}to{opacity:1}}
+.bb4-device-list{display:grid;gap:7px;margin-top:8px}
+.bb4-device-row{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+  padding:9px 10px;border:1px solid #d8e1ea;border-radius:9px;background:#fff
+}
+.bb4-device-row-main{display:flex;align-items:center;gap:7px;min-width:0;font-size:12px;color:#334155}
+.bb4-device-dot{width:8px;height:8px;border-radius:50%;background:#22a35a;box-shadow:0 0 0 3px rgba(34,163,90,.12)}
+.bb4-device-row-main strong{color:#0e3166;font-size:12px}
+.bb4-device-row-actions{display:flex;gap:6px}
+.bb4-device-row-actions button{
+  min-height:32px;padding:0 10px;border:1px solid #bfd0df;border-radius:7px;background:#f8fbff;
+  color:#0e3166;font-size:11px;font-weight:900;cursor:pointer
+}
+.bb4-device-row-actions button[data-remote-device-disconnect]{border-color:#efc1c1;color:#a32626;background:#fffafa}
+
 @media(max-width:1366px) and (pointer:coarse){
   #bb4RemoteBadge{right:9px;bottom:9px;height:30px;min-width:30px;padding:0 9px;font-size:10px}
 }
@@ -1418,6 +1466,9 @@ function mobileRemoteAvailable(){
 function mobileRemoteConnected(){
   return window.__BB4_REMOTE_CONTROLLER_CONNECTED__===true;
 }
+function mobileRemoteManualOff(){
+  try{return localStorage.getItem('bb4_remote_controller_enabled_v1')==='0'}catch{return false}
+}
 function setMobilePresenterMode(mode){
   const next=(mode==='remote'&&mobileRemoteAvailable()&&mobileRemoteConnected())?'remote':'preview';
   mobilePresenterMode=next;
@@ -1437,7 +1488,7 @@ window.addEventListener('bb4-remote-controller-status',e=>{
   const d=e.detail||{};
   window.__BB4_REMOTE_CONTROLLER_AVAILABLE__=!!d.available;
   window.__BB4_REMOTE_CONTROLLER_CONNECTED__=!!d.connected;
-  if(!d.available&&mobilePresenterMode==='remote'){
+  if((!d.available||!d.connected)&&mobilePresenterMode==='remote'){
     mobilePresenterMode='preview';
     window.__BB4_PHONE_MODE__='preview';
     try{window.dispatchEvent(new CustomEvent('bb4-phone-mode-changed',{detail:{mode:'preview'}}))}catch{}
@@ -1465,7 +1516,7 @@ function renderMobilePresenterBoard(){
   }).join('');
 
   const hasAny=state.questions.some(mobileQuestionHasContent);
-  const connectionLabel=remoteConnected?'사회자 연결 유지 중':(remoteAvailable?'사회자 연결 확인 중':'사회자 연결 없음');
+  const connectionLabel=remoteConnected?'사회자 원격 ON · 연결됨':(mobileRemoteManualOff()&&remoteAvailable?'사회자 원격 OFF · 등록 유지':remoteAvailable?'사회자 연결 확인 중':'사회자 연결 없음');
   const modeTabs=`<div class="mobile-presenter-modebar" role="tablist" aria-label="사회자 사용 모드">
       <button type="button" data-phone-mode="preview" class="${mobilePresenterMode==='preview'?'is-active':''}" aria-pressed="${mobilePresenterMode==='preview'}">문제·답 보기</button>
       <button type="button" data-phone-mode="remote" class="${mobilePresenterMode==='remote'?'is-active':''}" aria-pressed="${mobilePresenterMode==='remote'}" ${remoteConnected?'':'disabled'}>화면 리모콘</button>
@@ -1490,7 +1541,7 @@ function renderMobilePresenterBoard(){
 
   document.getElementById('app').innerHTML=`<main class="mobile-presenter-shell">
     <header class="mobile-presenter-header">
-      <div class="mobile-presenter-title"><span>${mobilePresenterMode==='remote'?'화면 리모콘':'문제·답 보기'}</span><strong>도전 바이블 골든벨</strong><small style="display:block;margin-top:3px;font-size:9px;font-weight:700;opacity:.55">v18</small></div>
+      <div class="mobile-presenter-title"><span>${mobilePresenterMode==='remote'?'화면 리모콘':'문제·답 보기'}</span><strong>도전 바이블 골든벨</strong><small style="display:block;margin-top:3px;font-size:9px;font-weight:700;opacity:.55">v20 FINAL</small></div>
       <button class="mobile-presenter-settings" id="mobileSettings">⚙ 설정</button>
     </header>
     ${modeTabs}
@@ -1592,15 +1643,22 @@ async function renderMobilePresenterQuestion(){
       ${body}
     </section>
     <div class="mobile-presenter-bottom">
+      <button class="mobile-presenter-board-quick" id="mobileQuickBoard" title="문제판으로" aria-label="문제판으로">${boardGridSvg()}</button>
       <button class="mobile-presenter-answer-toggle ${mobilePreviewAnswerVisible?'is-answer-showing':''}" id="mobileAnswerToggle">${mobilePreviewAnswerVisible?'문제 다시 보기':'정답 보기'}</button>
     </div>
   </main>`;
 
-  document.getElementById('mobileBackToBoard').addEventListener('click',()=>{
+  const goMobileBoard=()=>{
     mobilePreviewIndex=null;
     mobilePreviewAnswerVisible=false;
     currentView='home';
     render();
+  };
+
+  document.getElementById('mobileBackToBoard').addEventListener('click',goMobileBoard);
+  document.getElementById('mobileQuickBoard')?.addEventListener('click',()=>{
+    if(mobilePresenterMode==='remote'&&mobileRemoteConnected())window.dispatchEvent(new CustomEvent('bb4-mobile-remote-command',{detail:{action:'BOARD'}}));
+    goMobileBoard();
   });
   document.getElementById('mobileQuestionSettings')?.addEventListener('click',()=>{
     currentView='admin';
@@ -2212,11 +2270,16 @@ function mobileRemoteSettingsCard(){
   if(!isMobilePresenterDevice())return '';
   const available=mobileRemoteAvailable();
   const connected=mobileRemoteConnected();
-  const status=connected?'연결 유지 중':(available?'연결 확인 중':'연결 안 됨');
-  const tone=connected?'#167c4b':available?'#9a6a00':'#6b7280';
-  return `<section id="mobileRemoteSettingsCard" style="margin:0 0 18px;padding:15px 16px;border:1px solid #d9dee7;border-radius:11px;background:#fff;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap">
-    <div><div style="font-size:12px;font-weight:900;color:#0e3166">사회자 원격 연결</div><div id="mobileRemoteSettingsStatus" style="margin-top:5px;font-size:14px;font-weight:900;color:${tone}">● ${status}</div><div style="margin-top:4px;color:#6b7280;font-size:11px">한 번 등록된 이 기기는 연결 리셋이나 직접 연결 끊기 전까지 계속 기억됩니다.</div></div>
-    ${connected?'<button type="button" id="mobileDisconnectRemote" style="min-height:40px;padding:0 14px;border:1px solid #b42318;border-radius:8px;background:#fff;color:#b42318;font-weight:900">이 기기 연결 끊기</button>':'<span id="mobileRemoteSettingsHint" style="font-size:11px;color:#6b7280">기존 사회자 등록을 자동 복원합니다. 등록 이력이 없다면 방송 PC의 사회자 링크로 최초 1회 연결하세요.</span>'}
+  const manualOff=mobileRemoteManualOff();
+  const registered=!!mobileSavedControllerCredentials()?.room||available;
+  const status=connected?'ON · 연결됨':(registered&&manualOff?'OFF · 등록 유지':registered?'ON · 연결 확인 중':'등록 없음');
+  const tone=connected?'#167c4b':registered&&manualOff?'#a32626':registered?'#9a6a00':'#6b7280';
+  return `<section id="mobileRemoteSettingsCard" style="margin:0 0 18px;padding:15px 16px;border:1px solid #d9dee7;border-radius:11px;background:#fff;display:grid;gap:12px">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap">
+      <div><div style="font-size:12px;font-weight:900;color:#0e3166">사회자 원격 연결</div><div id="mobileRemoteSettingsStatus" style="margin-top:5px;font-size:14px;font-weight:900;color:${tone}">● ${status}</div><div style="margin-top:4px;color:#6b7280;font-size:11px">원격을 OFF해도 이 기기의 사회자 등록은 유지됩니다. 다시 ON하면 새 링크 없이 재연결됩니다.</div></div>
+      ${registered?`<button type="button" id="mobileToggleRemote" style="min-height:40px;padding:0 14px;border:1px solid ${connected?'#b42318':'#167c4b'};border-radius:8px;background:#fff;color:${connected?'#b42318':'#167c4b'};font-weight:900">${connected?'원격 연결 끄기':'원격 연결 켜기'}</button>`:'<span id="mobileRemoteSettingsHint" style="font-size:11px;color:#6b7280">방송 PC에서 사회자 링크를 받아 최초 1회 등록하세요.</span>'}
+    </div>
+    ${registered?'<div style="padding-top:10px;border-top:1px solid #edf0f4;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><span style="font-size:10px;color:#7a8491">등록 자체를 지울 때만 사용하세요.</span><button type="button" id="mobileUnregisterRemote" style="min-height:36px;padding:0 12px;border:1px solid #d9a8a8;border-radius:8px;background:#fff;color:#a32626;font-size:11px;font-weight:900">이 기기 등록 해제</button></div>':''}
   </section>`;
 }
 
@@ -2229,56 +2292,91 @@ function desktopRemoteSettingsCard(){
         <div style="display:grid;gap:6px;margin-top:9px;font-size:13px">
           <div>방송 PC 원격 · <strong id="desktopRemoteDisplayStatus">확인 중…</strong></div>
           <div>사회자 연결키 · <strong id="desktopRemoteLinkStatus">확인 중…</strong></div>
-          <div>사회자 리모콘 · <strong id="desktopRemoteControllerStatus">확인 중…</strong></div>
-          <div id="desktopRemoteLastSeen" style="color:#64748b;font-size:11px">사회자가 ‘화면 리모콘’ 모드를 열면 온라인 상태를 확인합니다.</div>
+          <div>현재 사회자 기기 · <strong id="desktopRemoteControllerStatus">확인 중…</strong></div>
+          <div id="desktopRemoteLastSeen" style="color:#64748b;font-size:11px">사회자 기기의 실제 접속 상태를 확인합니다.</div>
         </div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
-        <button type="button" class="admin-secondary-button" id="desktopRemoteConnect">원격 연결</button>
+        <button type="button" class="admin-secondary-button" id="desktopRemoteConnect">방송 PC 원격 켜기</button>
         <button type="button" class="admin-secondary-button" id="desktopRemoteCopy">사회자 링크 복사</button>
         <button type="button" class="admin-secondary-button" id="desktopRemoteRotate">사회자 연결 리셋</button>
-        <button type="button" class="admin-secondary-button" id="desktopRemoteDisconnect" style="border-color:#e6b7b7;color:#a32626">방송 PC 연결 끊기</button>
+        <button type="button" class="admin-secondary-button" id="desktopRemoteDisconnect" style="border-color:#e6b7b7;color:#a32626">방송 PC 원격 끄기</button>
       </div>
     </div>
-    <div style="margin-top:10px;padding-top:9px;border-top:1px solid #dbe5ef;color:#64748b;font-size:10px;line-height:1.5">진행 초기화와 사회자 연결 리셋은 서로 다른 기능입니다. ‘사회자 연결 리셋’을 하면 기존 사회자 링크만 무효화됩니다.</div>
+    <div id="desktopRemoteDeviceArea" style="margin-top:12px;padding-top:11px;border-top:1px solid #dbe5ef">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <strong style="font-size:11px;color:#0e3166">현재 접속 중인 사회자 기기</strong>
+        <span id="desktopRemoteDeviceCount" style="font-size:11px;color:#64748b">0대</span>
+      </div>
+      <div id="desktopRemoteDeviceList" class="bb4-device-list"><div style="font-size:11px;color:#7a8491;padding:8px 0">접속 중인 사회자 기기가 없습니다.</div></div>
+    </div>
+    <div style="margin-top:10px;padding-top:9px;border-top:1px solid #dbe5ef;color:#64748b;font-size:10px;line-height:1.5">‘확인’을 누르면 해당 사회자 기기 화면만 잠깐 깜빡입니다. 개별 ‘끊기’는 그 기기를 현재 연결에서 차단합니다. 같은 기기를 다시 허용하거나 링크 유출이 의심되면 ‘사회자 연결 리셋’ 후 새 링크를 보내세요.</div>
   </section>`;
 }
 
 function updateRemoteSettingsCards(){
   const mobileStatus=document.getElementById('mobileRemoteSettingsStatus');
   if(mobileStatus){
-    const available=mobileRemoteAvailable(),connected=mobileRemoteConnected();
-    mobileStatus.textContent='● '+(connected?'연결 유지 중':available?'연결 확인 중':'연결 안 됨');
-    mobileStatus.style.color=connected?'#167c4b':available?'#9a6a00':'#6b7280';
+    const available=mobileRemoteAvailable(),connected=mobileRemoteConnected(),manualOff=mobileRemoteManualOff();
+    const registered=!!mobileSavedControllerCredentials()?.room||available;
+    mobileStatus.textContent='● '+(connected?'ON · 연결됨':registered&&manualOff?'OFF · 등록 유지':registered?'ON · 연결 확인 중':'등록 없음');
+    mobileStatus.style.color=connected?'#167c4b':registered&&manualOff?'#a32626':registered?'#9a6a00':'#6b7280';
+    const toggle=document.getElementById('mobileToggleRemote');
+    if(toggle){
+      toggle.textContent=connected?'원격 연결 끄기':'원격 연결 켜기';
+      toggle.style.borderColor=connected?'#b42318':'#167c4b';
+      toggle.style.color=connected?'#b42318':'#167c4b';
+    }
   }
   const card=document.getElementById('desktopRemoteSettingsCard');
   if(!card)return;
   const st=window.__BB4_REMOTE_STATUS__||{};
+  const devices=Array.isArray(window.__BB4_REMOTE_DEVICES__)?window.__BB4_REMOTE_DEVICES__:[];
   const display=document.getElementById('desktopRemoteDisplayStatus');
   const link=document.getElementById('desktopRemoteLinkStatus');
   const controller=document.getElementById('desktopRemoteControllerStatus');
   const lastSeen=document.getElementById('desktopRemoteLastSeen');
   if(display){
-    display.textContent=st.displayConnected?'연결 유지 중':'연결 안 됨';
-    display.style.color=st.displayConnected?'#167c4b':'#a32626';
+    display.textContent=st.displayConnected?'ON · 연결 유지 중':st.displayManualOff?'OFF · 등록 유지':'연결 안 됨';
+    display.style.color=st.displayConnected?'#167c4b':st.displayManualOff?'#a32626':'#a32626';
   }
   if(link){
     link.textContent=st.controllerLinkStored?'보존됨':'없음';
     link.style.color=st.controllerLinkStored?'#0e3166':'#64748b';
   }
   if(controller){
-    const text=st.controllerOnline?'연결됨':(st.roomReady?'대기 중':'연결 없음');
-    controller.textContent=text;
-    controller.style.color=st.controllerOnline?'#167c4b':st.roomReady?'#9a6a00':'#64748b';
+    const n=Number(st.activeControllerCount||devices.length||0);
+    const remoteN=Number(st.remoteControllerCount||0);
+    controller.textContent=n?`${n}대 접속${remoteN?` · 리모콘 ${remoteN}대`:''}`:(st.roomReady?'0대 · 대기 중':'연결 없음');
+    controller.style.color=n?'#167c4b':st.roomReady?'#9a6a00':'#64748b';
   }
   if(lastSeen){
-    if(st.controllerOnline&&st.lastControllerSeenAt){
-      const sec=Math.max(0,Math.round((Date.now()-Number(st.lastControllerSeenAt))/1000));
-      lastSeen.textContent=`사회자 리모콘 응답 확인 · ${sec}초 전`;
+    if(devices.length){
+      lastSeen.textContent='접속 중인 기기는 아래에서 A/B/C로 자동 구분됩니다.';
     }else if(st.roomReady){
-      lastSeen.textContent='사회자가 ‘화면 리모콘’ 모드를 열면 여기에서 실제 연결 상태를 확인합니다.';
+      lastSeen.textContent='사회자 앱이 원격 ON 상태로 열리면 접속 기기 수가 표시됩니다.';
     }else{
       lastSeen.textContent='방송 PC 원격을 먼저 연결하면 사회자 링크를 만들 수 있습니다.';
+    }
+  }
+  const count=document.getElementById('desktopRemoteDeviceCount');
+  const list=document.getElementById('desktopRemoteDeviceList');
+  if(count)count.textContent=`${devices.length}대`;
+  if(list){
+    if(!devices.length){
+      list.innerHTML='<div style="font-size:11px;color:#7a8491;padding:8px 0">접속 중인 사회자 기기가 없습니다.</div>';
+    }else{
+      list.innerHTML=devices.map(d=>`<div class="bb4-device-row">
+        <div class="bb4-device-row-main"><span class="bb4-device-dot"></span><strong>기기 ${esc(d.label||'?')}</strong><span>· ${d.mode==='remote'?'화면 리모콘':'문제·답 보기'}</span><span style="color:#167c4b;font-weight:800">접속 중</span></div>
+        <div class="bb4-device-row-actions"><button type="button" data-remote-device-identify="${esc(d.uid||'')}">확인</button><button type="button" data-remote-device-disconnect="${esc(d.uid||'')}">끊기</button></div>
+      </div>`).join('');
+      list.querySelectorAll('[data-remote-device-identify]').forEach(b=>b.addEventListener('click',()=>window.__BB4_IDENTIFY_CONTROLLER__?.(b.dataset.remoteDeviceIdentify)));
+      list.querySelectorAll('[data-remote-device-disconnect]').forEach(b=>b.addEventListener('click',()=>{
+        const uid=b.dataset.remoteDeviceDisconnect;
+        const row=devices.find(x=>x.uid===uid);
+        const label=row?.label||'?';
+        if(confirm(`기기 ${label}의 사회자 연결을 끊을까요? 이 기기는 현재 사회자 연결에서 차단됩니다. 다시 허용하려면 사회자 연결 리셋 후 새 링크를 보내야 합니다.`))window.__BB4_DISCONNECT_CONTROLLER_BY_UID__?.(uid);
+      }));
     }
   }
   const connect=document.getElementById('desktopRemoteConnect');
@@ -2294,7 +2392,7 @@ function updateRemoteSettingsCards(){
 function renderAdmin(){
   currentView='admin';const q=state.questions[adminIndex];const slots=state.questions.map((x,i)=>`<button class="${i===adminIndex?'is-selected ':''}${questionFilled(x)?'is-filled':''}" data-admin-num="${i}"><strong>${i+1}</strong></button>`).join('');
   document.getElementById('app').innerHTML=`<div class="admin-shell">${commonTopbar()}<main class="admin-scroll-area"><section class="admin-panel"><header class="admin-header"><div><span class="kicker">ADMIN</span><h1>16문제 관리</h1><p>1번부터 16번까지 각 문제의 유형과 내용을 직접 설정합니다.</p></div><div class="admin-header-actions"><button class="admin-secondary-button" id="exportBtn">⇩ 내보내기</button><button class="admin-secondary-button" id="importBtn">☁ 불러오기</button><button class="admin-secondary-button" id="eventBtn">${isMobilePresenterDevice()?'← 문제판':'← 행사 화면'}</button></div></header>${isMobilePresenterDevice()?mobileRemoteSettingsCard():desktopRemoteSettingsCard()}<div class="admin-layout"><aside class="admin-nav"><div class="admin-nav-kicker">4×4 BOARD</div><div class="admin-nav-title">16문제</div><div class="admin-slot-label">문제 번호</div><div class="admin-slots">${slots}</div></aside><form class="admin-form" id="adminForm"><div class="admin-form-title">${adminIndex+1}번 문제</div><div class="admin-workspace"><div class="admin-editor"><div class="admin-form-grid"><label class="admin-field"><span>문제 유형</span><select id="qType">${Object.entries(TYPE_LABELS).map(([v,l])=>`<option value="${v}" ${q.type===v?'selected':''}>${l}</option>`).join('')}</select></label><label class="admin-field" id="answerTypeField"><span>답변 방식</span><select id="answerType"><option value="short" ${q.answerType==='short'?'selected':''}>단답형</option><option value="multiple" ${q.answerType==='multiple'?'selected':''}>4지선다</option></select></label></div><div id="hiddenOption"></div><label class="admin-field full"><span>문제</span><textarea id="qText">${esc(q.question)}</textarea></label><div id="choicesHost"></div><label class="admin-field full" id="answerTextField"><span>정답</span><textarea id="qAnswer" rows="5">${esc(q.answer)}</textarea></label><label class="admin-field full"><span>힌트 (선택)</span><input id="qHint" value="${displayText(q.hint)}" placeholder="필요한 문제에만 입력하세요."></label><div class="media-grid">${mediaCard(q,'questionImage','문제 이미지','image/*')}${mediaCard(q,'answerImage','정답 이미지','image/*')}${mediaCard(q,'video','문제 동영상','video/*')}${mediaCard(q,'answerVideo','정답 동영상','video/*')}${mediaCard(q,'audio','문제 음성','audio/*')}${mediaCard(q,'answerAudio','정답 음성','audio/*')}</div><div class="media-layout-options"><span>문제 미디어 크기</span><label><input type="radio" name="questionMediaLayout" value="full" ${q.questionMediaLayout!=='compact'?'checked':''}> 크게</label><label><input type="radio" name="questionMediaLayout" value="compact" ${q.questionMediaLayout==='compact'?'checked':''}> 작게 · 글자 중심</label></div><div class="media-layout-options"><span>정답 미디어 크기</span><label><input type="radio" name="answerMediaLayout" value="full" ${q.answerMediaLayout!=='compact'?'checked':''}> 크게</label><label><input type="radio" name="answerMediaLayout" value="compact" ${q.answerMediaLayout==='compact'?'checked':''}> 작게 · 글자 중심</label></div><div class="audio-options"><span>문제 동영상 재생</span><label><input type="radio" name="videoPlayback" value="manual" ${q.videoPlayback!=='auto'?'checked':''}> 수동</label><label><input type="radio" name="videoPlayback" value="auto" ${q.videoPlayback==='auto'?'checked':''}> 자동재생</label></div><div class="audio-options"><span>정답 동영상 재생</span><label><input type="radio" name="answerVideoPlayback" value="manual" ${q.answerVideoPlayback!=='auto'?'checked':''}> 수동</label><label><input type="radio" name="answerVideoPlayback" value="auto" ${q.answerVideoPlayback==='auto'?'checked':''}> 자동재생</label></div><div class="audio-options"><span>문제 음성 재생</span><label><input type="radio" name="audioPlayback" value="manual" ${q.audioPlayback!=='auto'?'checked':''}> 수동</label><label><input type="radio" name="audioPlayback" value="auto" ${q.audioPlayback==='auto'?'checked':''}> 자동재생</label></div><div class="audio-options"><span>정답 음성 재생</span><label><input type="radio" name="answerAudioPlayback" value="manual" ${q.answerAudioPlayback!=='auto'?'checked':''}> 수동</label><label><input type="radio" name="answerAudioPlayback" value="auto" ${q.answerAudioPlayback==='auto'?'checked':''}> 자동재생</label></div><footer class="admin-form-footer"><div class="left-actions"><button type="button" class="clear-btn" id="clearQuestion">이 문제 초기화</button></div><span class="autosave-note" id="autosaveNote">변경 내용 자동 저장</span><button type="submit" class="save-btn">저장</button></footer></div><aside class="admin-preview"><div class="preview-head"><strong>실제 화면 미리보기</strong><div class="preview-tabs"><button type="button" class="preview-tab ${adminPreviewMode==='question'?'active':''}" data-preview-mode="question">문제</button><button type="button" class="preview-tab ${adminPreviewMode==='answer'?'active':''}" data-preview-mode="answer">정답</button></div></div><div class="preview-screen" id="previewScreen"></div></aside></div></form></div></section></main></div>`;
-  wireCommonTopbar();document.querySelectorAll('[data-admin-num]').forEach(b=>b.addEventListener('click',()=>{saveAdminForm(false);adminIndex=Number(b.dataset.adminNum);adminPreviewMode='question';renderAdmin()}));document.getElementById('eventBtn').addEventListener('click',()=>{saveAdminForm(false);currentView='home';render()});document.getElementById('exportBtn').addEventListener('click',()=>{saveAdminForm(false);exportPack()});document.getElementById('importBtn').addEventListener('click',chooseImport);document.getElementById('adminForm').addEventListener('submit',e=>{e.preventDefault();saveAdminForm(true)});document.getElementById('clearQuestion').addEventListener('click',clearAdminQuestion);document.getElementById('qType').addEventListener('change',handleQuestionTypeChange);document.getElementById('answerType')?.addEventListener('change',()=>{syncAdminDynamic();queueAutosave()});['qText','qAnswer','qHint'].forEach(id=>document.getElementById(id)?.addEventListener('input',queueAutosave));document.querySelectorAll('input[name="questionMediaLayout"],input[name="answerMediaLayout"],input[name="videoPlayback"],input[name="answerVideoPlayback"],input[name="audioPlayback"],input[name="answerAudioPlayback"]').forEach(x=>x.addEventListener('change',queueAutosave));document.querySelectorAll('[data-preview-mode]').forEach(b=>b.addEventListener('click',()=>{adminPreviewMode=b.dataset.previewMode;document.querySelectorAll('[data-preview-mode]').forEach(x=>x.classList.toggle('active',x.dataset.previewMode===adminPreviewMode));updatePreview()}));document.getElementById('mobileDisconnectRemote')?.addEventListener('click',async()=>{if(!confirm('이 기기의 사회자 원격 연결을 끊을까요? 다시 연결하려면 방송 PC에서 새 사회자 링크를 받아야 합니다.'))return;try{await window.__BB4_DISCONNECT_CONTROLLER__?.();}finally{renderAdmin();}});document.getElementById('desktopRemoteConnect')?.addEventListener('click',()=>window.__BB4_DISPLAY_CONNECT__?.());document.getElementById('desktopRemoteCopy')?.addEventListener('click',()=>window.__BB4_COPY_CONTROLLER_LINK__?.());document.getElementById('desktopRemoteRotate')?.addEventListener('click',()=>window.__BB4_ROTATE_CONTROLLER_ROOM__?.());document.getElementById('desktopRemoteDisconnect')?.addEventListener('click',()=>{if(confirm('이 방송 PC의 원격 연결을 끊을까요? 문제 데이터와 사회자 연결키는 지워지지 않으며, 다시 연결 버튼으로 재개할 수 있습니다.'))window.__BB4_DISCONNECT_DISPLAY__?.();});updateRemoteSettingsCards();syncAdminDynamic();wireMediaCards();updatePreview();
+  wireCommonTopbar();document.querySelectorAll('[data-admin-num]').forEach(b=>b.addEventListener('click',()=>{saveAdminForm(false);adminIndex=Number(b.dataset.adminNum);adminPreviewMode='question';renderAdmin()}));document.getElementById('eventBtn').addEventListener('click',()=>{saveAdminForm(false);currentView='home';render()});document.getElementById('exportBtn').addEventListener('click',()=>{saveAdminForm(false);exportPack()});document.getElementById('importBtn').addEventListener('click',chooseImport);document.getElementById('adminForm').addEventListener('submit',e=>{e.preventDefault();saveAdminForm(true)});document.getElementById('clearQuestion').addEventListener('click',clearAdminQuestion);document.getElementById('qType').addEventListener('change',handleQuestionTypeChange);document.getElementById('answerType')?.addEventListener('change',()=>{syncAdminDynamic();queueAutosave()});['qText','qAnswer','qHint'].forEach(id=>document.getElementById(id)?.addEventListener('input',queueAutosave));document.querySelectorAll('input[name="questionMediaLayout"],input[name="answerMediaLayout"],input[name="videoPlayback"],input[name="answerVideoPlayback"],input[name="audioPlayback"],input[name="answerAudioPlayback"]').forEach(x=>x.addEventListener('change',queueAutosave));document.querySelectorAll('[data-preview-mode]').forEach(b=>b.addEventListener('click',()=>{adminPreviewMode=b.dataset.previewMode;document.querySelectorAll('[data-preview-mode]').forEach(x=>x.classList.toggle('active',x.dataset.previewMode===adminPreviewMode));updatePreview()}));document.getElementById('mobileToggleRemote')?.addEventListener('click',async()=>{try{await window.__BB4_TOGGLE_CONTROLLER_REMOTE__?.();}finally{renderAdmin();}});document.getElementById('mobileUnregisterRemote')?.addEventListener('click',async()=>{if(!confirm('이 기기의 원격 등록을 해제하면 다시 사용하려면 사회자 링크를 다시 받아야 합니다. 계속하시겠습니까?'))return;try{await window.__BB4_DISCONNECT_CONTROLLER__?.();}finally{renderAdmin();}});document.getElementById('desktopRemoteConnect')?.addEventListener('click',()=>window.__BB4_DISPLAY_CONNECT__?.());document.getElementById('desktopRemoteCopy')?.addEventListener('click',()=>window.__BB4_COPY_CONTROLLER_LINK__?.());document.getElementById('desktopRemoteRotate')?.addEventListener('click',()=>window.__BB4_ROTATE_CONTROLLER_ROOM__?.());document.getElementById('desktopRemoteDisconnect')?.addEventListener('click',()=>{if(confirm('이 방송 PC의 원격 연결을 끊을까요? 문제 데이터와 사회자 연결키는 지워지지 않으며, 다시 연결 버튼으로 재개할 수 있습니다.'))window.__BB4_DISCONNECT_DISPLAY__?.();});updateRemoteSettingsCards();syncAdminDynamic();wireMediaCards();updatePreview();
 }
 
 async function handleQuestionTypeChange(){
@@ -2533,7 +2631,7 @@ if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)){
 render();
 })();
 </script>
-<!-- BB4_REMOTE_BEGIN_RUNTIME FINAL_V16_MOBILE_DUAL_MODE_SAFE -->
+<!-- BB4_REMOTE_BEGIN_RUNTIME FINAL_V20_DEVICE_PRESENCE_CONTROL -->
 <script>
 (async()=>{
 'use strict';
@@ -2552,19 +2650,22 @@ const OWNER_ROOM_STORE='bb4_remote_owner_room_v4';
 const OWNER_KEY_STORE='bb4_remote_owner_key_v4';
 const OWNER_REMOTE_ENABLED_STORE='bb4_remote_owner_enabled_v1';
 const CONTROLLER_ROOM_STORE='bb4_remote_controller_credentials_v4';
+const CONTROLLER_REMOTE_ENABLED_STORE='bb4_remote_controller_enabled_v1';
+const CONTROLLER_PRESENCE_STALE_MS=35000;
 const LEGACY_REMOTE_KEYS=[
   'bb4_remote_owner_room_session_v1','bb4_remote_owner_key_session_v1','bb4_remote_controller_room_session_v1',
   'bb4_remote_owner_room_v3','bb4_remote_owner_key_v3','bb4_remote_controller_room_v3'
 ];
-const BB4_REMOTE_BUILD='v18-remote-state-security-final-2026-08-28';
+const BB4_REMOTE_BUILD='v20-final-device-presence-control-2026-08-28';
 const BB4_ALLOWED_ORIGIN='https://bibleplay.github.io';
 const BB4_ALLOWED_PATH_PREFIX='/BibleGoldenBell_4X4/';
 
 let fb=null,auth=null,db=null,user=null;
 let role='none',connected=false,roomId='',roomKey='',joinProof='';
 let displayState=null,lastCommandId=null,lastPublishedSig='';
-let unsubCommand=null,unsubState=null,pollTimer=null,heartbeatTimer=null,controllerPresenceTimer=null;
-let lastControllerSeenAt=0,lastControllerCommandSentAt=0;
+let unsubCommand=null,unsubState=null,unsubDevices=null,unsubDeviceControl=null,pollTimer=null,heartbeatTimer=null,controllerPresenceTimer=null,deviceUiTimer=null;
+let lastControllerSeenAt=0,lastControllerCommandSentAt=0,controllerConnectedAt=0,controllerOnDisconnectHandle=null,deviceControlNonce='';
+let controllerDevices={};
 let longTimer=null,longFired=false,longIndex=null,toastTimer=null;
 
 function api(){return window.__BB4_REMOTE_API__||null}
@@ -2638,19 +2739,44 @@ function modeLabel(m){return m==='2'?'2팀':m==='3'?'3팀':'개인'}
 function signalControllerStatus(available,controllerConnected=connected){
   window.__BB4_REMOTE_CONTROLLER_AVAILABLE__=!!available;
   window.__BB4_REMOTE_CONTROLLER_CONNECTED__=!!controllerConnected;
+  window.__BB4_REMOTE_CONTROLLER_MANUAL_OFF__=secureGet(CONTROLLER_REMOTE_ENABLED_STORE)==='0';
   try{window.dispatchEvent(new CustomEvent('bb4-remote-controller-status',{detail:{available:!!available,connected:!!controllerConnected}}))}catch{}
 }
+function deviceLetter(i){
+  i=Number(i)||0;
+  if(i<26)return String.fromCharCode(65+i);
+  return String(i+1);
+}
+function activeControllerRows(){
+  const now=Date.now();
+  return Object.entries(controllerDevices||{})
+    .map(([uid,rec])=>({uid,presence:rec?.presence||{}}))
+    .filter(x=>x.presence.online===true&&now-Number(x.presence.lastSeenAt||0)<CONTROLLER_PRESENCE_STALE_MS)
+    .sort((a,b)=>Number(a.presence.connectedAt||0)-Number(b.presence.connectedAt||0)||String(a.uid).localeCompare(String(b.uid)))
+    .map((x,i)=>({uid:x.uid,label:deviceLetter(i),mode:x.presence.mode==='remote'?'remote':'preview',lastSeenAt:Number(x.presence.lastSeenAt||0),connectedAt:Number(x.presence.connectedAt||0)}));
+}
+function publishControllerDeviceSnapshot(){
+  const rows=activeControllerRows();
+  window.__BB4_REMOTE_DEVICES__=rows;
+  lastControllerSeenAt=rows.reduce((m,x)=>Math.max(m,Number(x.lastSeenAt||0)),0);
+  return rows;
+}
 function remoteStatusSnapshot(){
-  const controllerOnline=role==='display'&&connected&&lastControllerSeenAt>0&&(Date.now()-lastControllerSeenAt<30000);
+  const rows=publishControllerDeviceSnapshot();
+  const remoteCount=rows.filter(x=>x.mode==='remote').length;
   return {
     role,
     displayConnected:role==='display'&&connected,
     controllerConnected:role==='controller'&&connected,
-    controllerOnline,
+    controllerOnline:role==='display'&&connected&&rows.length>0,
+    activeControllerCount:rows.length,
+    remoteControllerCount:remoteCount,
+    previewControllerCount:Math.max(0,rows.length-remoteCount),
     roomReady:role==='display'&&connected&&!!roomId,
     controllerLinkStored:!!jsonGet(OWNER_ROOM_STORE)?.room,
     ownerRegistered:!!(secureGet(OWNER_KEY_STORE)||'').trim(),
     displayManualOff:secureGet(OWNER_REMOTE_ENABLED_STORE)==='0',
+    controllerManualOff:secureGet(CONTROLLER_REMOTE_ENABLED_STORE)==='0',
     lastControllerSeenAt:Number(lastControllerSeenAt||0)
   };
 }
@@ -2660,16 +2786,15 @@ function updateRemotePanelSummary(){
   const link=document.getElementById('bb4ControllerLinkValue');
   const c=document.getElementById('bb4ControllerStatusValue');
   const seen=document.getElementById('bb4ControllerSeenValue');
-  if(d){d.textContent=st.displayConnected?'연결 유지 중':'연결 안 됨';d.style.color=st.displayConnected?'#8ee0b8':'#ffc4c8';}
+  if(d){d.textContent=st.displayConnected?'ON · 연결 유지 중':st.displayManualOff?'OFF · 등록 유지':'연결 안 됨';d.style.color=st.displayConnected?'#8ee0b8':st.displayManualOff?'#ffc4c8':'#ffc4c8';}
   if(link){link.textContent=st.controllerLinkStored?'보존됨':'없음';link.style.color=st.controllerLinkStored?'#dce7f2':'#aebed0';}
   if(c){
-    c.textContent=st.controllerOnline?'연결됨':st.roomReady?'대기 중':'연결 없음';
-    c.style.color=st.controllerOnline?'#8ee0b8':st.roomReady?'#ffd184':'#aebed0';
+    c.textContent=st.activeControllerCount?`${st.activeControllerCount}대 접속${st.remoteControllerCount?` · 리모콘 ${st.remoteControllerCount}대`:''}`:st.roomReady?'0대 · 대기 중':'연결 없음';
+    c.style.color=st.activeControllerCount?'#8ee0b8':st.roomReady?'#ffd184':'#aebed0';
   }
   if(seen){
-    if(st.controllerOnline&&st.lastControllerSeenAt){
-      seen.textContent=`최근 응답 ${Math.max(0,Math.round((Date.now()-st.lastControllerSeenAt)/1000))}초 전`;
-    }else if(st.roomReady){seen.textContent='사회자가 화면 리모콘을 열면 연결 상태를 확인합니다.';}
+    if(st.activeControllerCount&&st.lastControllerSeenAt){seen.textContent=`최근 사회자 응답 ${Math.max(0,Math.round((Date.now()-st.lastControllerSeenAt)/1000))}초 전`;}
+    else if(st.roomReady){seen.textContent='사회자 앱이 원격 ON 상태로 열리면 접속 기기 수를 확인합니다.';}
     else seen.textContent='사회자 링크를 아직 만들 수 없는 상태입니다.';
   }
 }
@@ -2677,12 +2802,18 @@ function signalDisplayStatus(){
   const detail=remoteStatusSnapshot();
   window.__BB4_REMOTE_STATUS__=detail;
   updateRemotePanelSummary();
+  if(role==='display'){
+    const b=document.getElementById('bb4RemoteBadge');
+    if(b&&detail.displayConnected){b.textContent=`원격 ON · ${detail.activeControllerCount}대`;b.className='is-ok is-display-connected';}
+    else if(b&&detail.displayManualOff){b.textContent='원격 OFF';b.className='is-warn';}
+  }
   try{window.dispatchEvent(new CustomEvent('bb4-remote-display-status',{detail}))}catch{}
 }
 function markControllerSeen(sentAt=Date.now()){
   lastControllerSeenAt=Math.max(lastControllerSeenAt,Number(sentAt)||Date.now());
   signalDisplayStatus();
 }
+
 function isOfficialRemoteOrigin(){
   return location.origin===BB4_ALLOWED_ORIGIN && location.pathname.startsWith(BB4_ALLOWED_PATH_PREFIX);
 }
@@ -2750,16 +2881,16 @@ function mountUi(){
     <div id="bb4DisplayConnectionSummary" hidden style="margin:0 0 10px;padding:10px 12px;border:1px solid #244868;border-radius:11px;background:#091a2a;font-size:11px;line-height:1.6">
       <div>방송 PC 원격 · <strong id="bb4DisplayStatusValue">확인 중…</strong></div>
       <div>사회자 연결키 · <strong id="bb4ControllerLinkValue">확인 중…</strong></div>
-      <div>사회자 리모콘 · <strong id="bb4ControllerStatusValue">확인 중…</strong></div>
+      <div>현재 사회자 기기 · <strong id="bb4ControllerStatusValue">확인 중…</strong></div>
       <div id="bb4ControllerSeenValue" style="color:#91a6bb;font-size:10px">연결 상태 확인 중…</div>
     </div>
     <div class="bb4-remote-status" id="bb4RemotePanelStatus">연결되지 않았습니다.</div>
     <div class="bb4-remote-actions">
-      <button class="primary wide" id="bb4RemoteConnectDisplay" hidden>방송 화면 원격 연결</button>
+      <button class="primary wide" id="bb4RemoteConnectDisplay" hidden>방송 PC 원격 켜기</button>
       <button class="primary wide" id="bb4RemoteCopy" hidden>사회자 링크 복사</button>
       <button id="bb4RemoteOwnerEdit" hidden>관리자 키 다시 등록</button>
       <button id="bb4RemoteRotate" hidden>사회자 연결 리셋</button>
-      <button id="bb4RemoteDisconnectDisplay" hidden>방송 PC 연결 끊기</button>
+      <button id="bb4RemoteDisconnectDisplay" hidden>방송 PC 원격 끄기</button>
       <button class="danger" id="bb4RemoteReset" hidden>전체 초기화</button>
       <button id="bb4RemoteClose">닫기</button>
     </div>
@@ -2771,8 +2902,11 @@ function mountUi(){
 
   const toast=document.createElement('div');
   toast.id='bb4RemoteToast';
+  const identifyFlash=document.createElement('div');
+  identifyFlash.id='bb4DeviceIdentifyFlash';
+  identifyFlash.setAttribute('aria-hidden','true');
 
-  document.body.append(badge,panel,picker,toast);
+  document.body.append(badge,panel,picker,toast,identifyFlash);
 
   badge.addEventListener('click',()=>panel.classList.add('is-open'));
   panel.addEventListener('click',e=>{if(e.target===panel)panel.classList.remove('is-open')});
@@ -2874,7 +3008,7 @@ function setPanelButtons(){
   if(connect){
     connect.hidden=!(isDisplay&&!connected&&hasOwner);
     connect.disabled=false;
-    connect.textContent='방송 화면 원격 연결';
+    connect.textContent='방송 PC 원격 켜기';
   }
   if(copy){copy.hidden=!(isDisplay&&connected);copy.disabled=false;}
   if(rotate){rotate.hidden=!(isDisplay&&connected);rotate.disabled=false;}
@@ -2977,16 +3111,19 @@ async function restoreOwnerRoom(){
   }catch{return false}
 }
 function stopRealtime(){
-  try{unsubCommand?.()}catch{};try{unsubState?.()}catch{};
-  unsubCommand=unsubState=null;
-  clearInterval(pollTimer);clearInterval(heartbeatTimer);clearInterval(controllerPresenceTimer);
-  pollTimer=heartbeatTimer=controllerPresenceTimer=null;lastCommandId=null;lastPublishedSig='';
+  try{unsubCommand?.()}catch{};try{unsubState?.()}catch{};try{unsubDevices?.()}catch{};try{unsubDeviceControl?.()}catch{};
+  unsubCommand=unsubState=unsubDevices=unsubDeviceControl=null;
+  clearInterval(pollTimer);clearInterval(heartbeatTimer);clearInterval(controllerPresenceTimer);clearInterval(deviceUiTimer);
+  pollTimer=heartbeatTimer=controllerPresenceTimer=deviceUiTimer=null;lastCommandId=null;lastPublishedSig='';
+  controllerOnDisconnectHandle=null;controllerConnectedAt=0;deviceControlNonce='';
+  if(role==='display'){controllerDevices={};window.__BB4_REMOTE_DEVICES__=[];}
 }
 async function connectDisplay(auto){
   if(connected&&role==='display')return;
   try{
     panelStatus('보안 연결 중…');badgeState('연결 중','is-warn');
     role='display';
+    try{fb?.dbMod?.goOnline?.(db)}catch{}
     secureSet(OWNER_REMOTE_ENABLED_STORE,'1');
     const restored=await restoreOwnerRoom();
     if(!restored)await createRoom();
@@ -3011,14 +3148,21 @@ async function connectDisplay(auto){
       ()=>{badgeState('수신 오류','is-bad');panelStatus('Firebase 수신 권한을 확인하세요.')}
     );
 
+    unsubDevices=fb.dbMod.onValue(
+      fb.dbMod.ref(db,`rooms/${roomId}/devices`),
+      snap=>{controllerDevices=snap.val()||{};publishControllerDeviceSnapshot();signalDisplayStatus();},
+      ()=>{controllerDevices={};window.__BB4_REMOTE_DEVICES__=[];signalDisplayStatus();}
+    );
+    deviceUiTimer=setInterval(()=>signalDisplayStatus(),5000);
+
     await publishState(true);
     pollTimer=setInterval(()=>publishState(false).catch(()=>{}),500);
     heartbeatTimer=setInterval(()=>{publishState(true).catch(()=>{});signalDisplayStatus();},10000);
 
     badgeState('원격 연결됨','is-ok is-display-connected');
-    panelStatus(`방송 화면 원격 연결 유지 중 · ${modeLabel(api()?.getSnapshot?.().mode)} · 사회자 리모콘 상태는 위에서 확인할 수 있습니다.`);
+    panelStatus(`방송 PC 원격 연결 유지 중 · ${modeLabel(api()?.getSnapshot?.().mode)} · 사회자 리모콘 상태는 위에서 확인할 수 있습니다.`);
     setPanelButtons();signalDisplayStatus();
-    if(!auto)toast('방송 화면 원격 연결이 준비되었습니다.');
+    if(!auto)toast('방송 PC 원격 연결이 준비되었습니다.');
   }catch(err){
     console.error(err);connected=false;
     const msg=String(err?.code||err?.message||'');
@@ -3037,8 +3181,9 @@ async function disconnectDisplayDevice(){
   stopRealtime();
   connected=false;lastControllerSeenAt=0;
   secureSet(OWNER_REMOTE_ENABLED_STORE,'0');
+  try{fb?.dbMod?.goOffline?.(db)}catch{}
   badgeState('원격 끊김','is-warn');
-  panelStatus('방송 PC 원격 연결이 끊겼습니다. 문제 데이터와 사회자 연결키는 유지됩니다. “방송 화면 원격 연결”로 다시 시작할 수 있습니다.');
+  panelStatus('방송 PC 원격 연결이 끊겼습니다. 문제 데이터와 사회자 연결키는 유지됩니다. “방송 PC 원격 켜기”로 다시 시작할 수 있습니다.');
   setPanelButtons();signalDisplayStatus();
   toast('방송 PC 원격 연결을 끊었습니다.');
   return true;
@@ -3055,9 +3200,31 @@ async function publishState(force){
   await fb.dbMod.set(fb.dbMod.ref(db,`rooms/${roomId}/state`),payload);
   lastPublishedSig=sig;
 }
+async function identifyControllerDevice(uid){
+  uid=String(uid||'').trim();if(!uid||role!=='display'||!connected)return false;
+  const row=activeControllerRows().find(x=>x.uid===uid);if(!row){toast('해당 기기는 현재 접속 중이 아닙니다.');return false;}
+  try{
+    await fb.dbMod.set(fb.dbMod.ref(db,`rooms/${roomId}/devices/${uid}/control`),{identifyNonce:rand(8),identifyAt:Date.now()});
+    toast(`기기 ${row.label}에 확인 신호를 보냈습니다.`);return true;
+  }catch(err){console.error(err);toast('기기 확인 신호 전송에 실패했습니다.');return false;}
+}
+async function disconnectControllerByUid(uid){
+  uid=String(uid||'').trim();if(!uid||role!=='display'||!connected)return false;
+  const row=activeControllerRows().find(x=>x.uid===uid);
+  try{
+    await fb.dbMod.set(fb.dbMod.ref(db,`rooms/${roomId}/revoked/${uid}`),true);
+    try{await fb.dbMod.remove(fb.dbMod.ref(db,`rooms/${roomId}/members/${uid}`));}catch{}
+    try{await fb.dbMod.remove(fb.dbMod.ref(db,`rooms/${roomId}/devices/${uid}`));}catch{}
+    delete controllerDevices[uid];publishControllerDeviceSnapshot();signalDisplayStatus();
+    toast(`기기 ${row?.label||''} 연결을 끊었습니다.`.trim());return true;
+  }catch(err){console.error(err);toast('기기 연결 끊기에 실패했습니다.');return false;}
+}
+window.__BB4_IDENTIFY_CONTROLLER__=identifyControllerDevice;
+window.__BB4_DISCONNECT_CONTROLLER_BY_UID__=disconnectControllerByUid;
+
 function controllerUrl(){
   const u=new URL(location.href);
-  u.searchParams.set('bb4remote','v18');
+  u.searchParams.set('bb4remote','v20');
   u.hash=new URLSearchParams({role:'controller',room:roomId,key:roomKey}).toString();
   return u.toString();
 }
@@ -3087,30 +3254,101 @@ async function rotateRoom(){
   }
 }
 
+async function setControllerPresenceOffline(){
+  if(role!=='controller'||!connected||!user?.uid||!roomId)return;
+  try{await fb.dbMod.update(fb.dbMod.ref(db,`rooms/${roomId}/devices/${user.uid}/presence`),{online:false,lastSeenAt:Date.now(),mode:window.__BB4_PHONE_MODE__==='remote'?'remote':'preview'});}catch{}
+  try{await controllerOnDisconnectHandle?.cancel?.()}catch{}
+}
+function clearControllerRegistrationLocal(){
+  secureRemove(CONTROLLER_ROOM_STORE);
+  secureRemove(CONTROLLER_REMOTE_ENABLED_STORE);
+  try{localStorage.removeItem('bb4_remote_controller_room_v3')}catch{}
+  try{sessionStorage.removeItem('bb4_remote_controller_room_session_v1')}catch{}
+  const u=new URL(location.href);u.hash='';history.replaceState(null,'',u.pathname+u.search);
+}
 async function disconnectControllerDevice(){
   const oldRoom=roomId;
   try{
+    await setControllerPresenceOffline();
     if(role==='controller'&&connected&&user?.uid&&oldRoom){
+      try{await fb.dbMod.remove(fb.dbMod.ref(db,`rooms/${oldRoom}/devices/${user.uid}`));}catch{}
       try{await fb.dbMod.remove(fb.dbMod.ref(db,`rooms/${oldRoom}/members/${user.uid}`));}catch{}
     }
   }finally{
     stopRealtime();
+    try{fb?.dbMod?.goOffline?.(db)}catch{}
     connected=false;roomId='';roomKey='';joinProof='';displayState=null;
-    secureRemove(CONTROLLER_ROOM_STORE);
-    try{localStorage.removeItem('bb4_remote_controller_room_v3')}catch{}
-    try{sessionStorage.removeItem('bb4_remote_controller_room_session_v1')}catch{}
+    clearControllerRegistrationLocal();
     window.__BB4_REMOTE_DISPLAY_STATE__=null;
     window.__BB4_PHONE_MODE__='preview';
     role='handheld';
-    const u=new URL(location.href);u.hash='';
-    history.replaceState(null,'',u.pathname+u.search);
     signalControllerStatus(false,false);
-    toast('이 기기의 사회자 원격 연결을 끊었습니다.');
+    toast('이 기기의 사회자 등록을 해제했습니다.');
   }
   return true;
 }
 window.__BB4_DISCONNECT_CONTROLLER__=disconnectControllerDevice;
 
+async function setControllerRemoteEnabled(enable){
+  enable=!!enable;
+  const saved=savedControllerCredentials();
+  if(!saved?.room&&!frag().room){toast('저장된 사회자 등록이 없습니다.');return false;}
+  if(enable){
+    secureSet(CONTROLLER_REMOTE_ENABLED_STORE,'1');
+    try{fb?.dbMod?.goOnline?.(db)}catch{}
+    if(connected&&role==='controller'){signalControllerStatus(true,true);return true;}
+    const ok=await connectControllerFromUrl();
+    if(ok)toast('사회자 원격 연결을 켰습니다.');
+    return ok;
+  }
+  secureSet(CONTROLLER_REMOTE_ENABLED_STORE,'0');
+  await setControllerPresenceOffline();
+  stopRealtime();
+  connected=false;displayState=null;window.__BB4_REMOTE_DISPLAY_STATE__=null;
+  try{fb?.dbMod?.goOffline?.(db)}catch{}
+  if(window.__BB4_PHONE_MODE__==='remote'){
+    window.__BB4_PHONE_MODE__='preview';
+  }
+  signalControllerStatus(true,false);
+  toast('사회자 원격 연결을 껐습니다. 등록은 유지됩니다.');
+  return true;
+}
+window.__BB4_SET_CONTROLLER_REMOTE_ENABLED__=setControllerRemoteEnabled;
+window.__BB4_TOGGLE_CONTROLLER_REMOTE__=()=>setControllerRemoteEnabled(!connected);
+
+function flashIdentifySignal(){
+  const el=document.getElementById('bb4DeviceIdentifyFlash');if(!el)return;
+  el.classList.remove('is-active');void el.offsetWidth;el.classList.add('is-active');
+  setTimeout(()=>el.classList.remove('is-active'),2800);
+}
+function subscribeControllerControl(){
+  if(role!=='controller'||!connected||!user?.uid)return;
+  let first=true;
+  unsubDeviceControl=fb.dbMod.onValue(
+    fb.dbMod.ref(db,`rooms/${roomId}/devices/${user.uid}/control`),
+    snap=>{
+      const v=snap.val()||{};const nonce=String(v.identifyNonce||'');
+      if(first){
+        first=false;deviceControlNonce=nonce;
+        if(nonce&&Date.now()-Number(v.identifyAt||0)<15000)flashIdentifySignal();
+        return;
+      }
+      if(nonce&&nonce!==deviceControlNonce){
+        deviceControlNonce=nonce;
+        if(Date.now()-Number(v.identifyAt||0)<15000)flashIdentifySignal();
+      }
+    },()=>{}
+  );
+}
+async function handleControllerPermissionLoss(){
+  stopRealtime();connected=false;displayState=null;window.__BB4_REMOTE_DISPLAY_STATE__=null;
+  clearControllerRegistrationLocal();
+  try{fb?.dbMod?.goOffline?.(db)}catch{}
+  window.__BB4_PHONE_MODE__='preview';role='handheld';
+  signalControllerStatus(false,false);
+  badgeState('권한 없음','is-bad');
+  panelStatus('이 사회자 연결이 해제되었거나 리셋되었습니다. 방송 화면에서 사회자 링크를 다시 받아주세요.');
+}
 async function connectControllerFromUrl(){
   const f=frag();
   const saved=savedControllerCredentials();
@@ -3118,9 +3356,17 @@ async function connectControllerFromUrl(){
   const targetRoom=fromLink?f.room:(saved?.room||'');
   const targetKey=fromLink?(f.key||((saved?.room===f.room)?saved.key:'')):(saved?.key||'');
   if(!targetRoom)return false;
-  role='controller';roomId=targetRoom;
+  if(fromLink)secureSet(CONTROLLER_REMOTE_ENABLED_STORE,'1');
+  if(!fromLink&&secureGet(CONTROLLER_REMOTE_ENABLED_STORE)==='0'){
+    role='controller';roomId=targetRoom;roomKey=targetKey||'';
+    signalControllerStatus(true,false);
+    try{fb?.dbMod?.goOffline?.(db)}catch{}
+    return false;
+  }
+  role='controller';roomId=targetRoom;roomKey=targetKey||'';
   signalControllerStatus(true,false);
   try{
+    try{fb?.dbMod?.goOnline?.(db)}catch{}
     await ensureAuth();
     if(targetKey){
       joinProof=await sha(targetKey);
@@ -3133,8 +3379,8 @@ async function connectControllerFromUrl(){
     }
 
     connected=true;
+    secureSet(CONTROLLER_REMOTE_ENABLED_STORE,'1');
     if(!targetKey&&saved?.room===roomId){
-      // Upgrade a legacy room-only registration to the current durable record without weakening auth.
       secureSet(CONTROLLER_ROOM_STORE,JSON.stringify({room:roomId,key:String(saved.key||'')}));
     }
     if(window.__BB4_PHONE_MODE__!=='remote')window.__BB4_PHONE_MODE__='preview';
@@ -3154,32 +3400,24 @@ async function connectControllerFromUrl(){
         decorateMobileBoard();
         try{window.__BB4_MOBILE_APPLY_REMOTE_STATE__?.(displayState)}catch{}
       },
-      ()=>{
-        connected=false;
-        secureRemove(CONTROLLER_ROOM_STORE);
-        try{localStorage.removeItem('bb4_remote_controller_room_v3')}catch{}
-        try{sessionStorage.removeItem('bb4_remote_controller_room_session_v1')}catch{}
-        signalControllerStatus(false,false);
-        badgeState('권한 없음','is-bad');
-        panelStatus('이 사회자 링크가 만료되었거나 권한이 없습니다. 새 링크를 받아주세요.');
-      }
+      ()=>{handleControllerPermissionLoss().catch(()=>{});}
     );
-    setPanelButtons();
+    subscribeControllerControl();
     installControllerEvents();
     syncControllerPresenceHeartbeat();
+    setPanelButtons();
     toast('사회자 원격 연결이 준비되었습니다.');
     return true;
   }catch(err){
     console.error(err);connected=false;
-    signalControllerStatus(false,false);
+    signalControllerStatus(!!savedControllerCredentials()?.room,false);
     const msg=String(err?.code||err?.message||'');
     if(msg.includes('BB4_REMOTE_ORIGIN_NOT_ALLOWED'))panelStatus('보안을 위해 사회자 원격은 공식 GitHub Pages 주소에서만 실행됩니다.');
     else if(msg.includes('operation-not-allowed'))panelStatus('Firebase Authentication에서 익명 로그인을 먼저 켜야 합니다.');
     else if(msg.includes('permission-denied')||msg.includes('CONTROLLER_LINK_REQUIRED')){
-      secureRemove(CONTROLLER_ROOM_STORE);
-      try{localStorage.removeItem('bb4_remote_controller_room_v3')}catch{}
-      try{sessionStorage.removeItem('bb4_remote_controller_room_session_v1')}catch{}
-      panelStatus('사회자 연결이 만료되었거나 리셋되었습니다. 방송 화면에서 새 사회자 링크를 받아 다시 등록하세요.');
+      clearControllerRegistrationLocal();
+      signalControllerStatus(false,false);
+      panelStatus('사회자 연결이 만료되었거나 해제되었습니다. 방송 화면에서 사회자 링크를 다시 받아 등록하세요.');
     }else panelStatus(`사회자 원격 인증 실패 · ${authFailureMessage(err)}`);
     badgeState('연결 실패','is-bad');setPanelButtons();
     return false;
@@ -3198,24 +3436,32 @@ async function sendCommand(action,payload){
   lastControllerCommandSentAt=now;
   return true;
 }
-async function sendControllerPresence(){
-  // Presence is only written while the user explicitly selected 화면 리모콘.
-  // 문제·답 보기 never writes broadcast commands.
-  if(!connected||role!=='controller'||window.__BB4_PHONE_MODE__!=='remote')return false;
-  if(Date.now()-lastControllerCommandSentAt<4500)return true;
+async function writeControllerPresence(){
+  if(!connected||role!=='controller'||!user?.uid||!roomId)return false;
   const now=Date.now();
-  const cmd={id:`${now}-${rand(6)}`,action:'BOARD',payload:{__bb4Presence:true},sentAt:now,packFingerprint:api()?.getSnapshot?.().packFingerprint||''};
-  await fb.dbMod.set(fb.dbMod.ref(db,`rooms/${roomId}/command`),cmd);
-  lastControllerCommandSentAt=now;
+  if(!controllerConnectedAt)controllerConnectedAt=now;
+  const presenceRef=fb.dbMod.ref(db,`rooms/${roomId}/devices/${user.uid}/presence`);
+  await fb.dbMod.update(presenceRef,{
+    online:true,
+    lastSeenAt:now,
+    connectedAt:controllerConnectedAt,
+    mode:window.__BB4_PHONE_MODE__==='remote'?'remote':'preview'
+  });
   return true;
 }
 function syncControllerPresenceHeartbeat(){
   clearInterval(controllerPresenceTimer);controllerPresenceTimer=null;
-  if(role!=='controller'||!connected||window.__BB4_PHONE_MODE__!=='remote')return;
-  sendControllerPresence().catch(()=>{});
-  controllerPresenceTimer=setInterval(()=>sendControllerPresence().catch(()=>{}),12000);
+  if(role!=='controller'||!connected)return;
+  if(!controllerConnectedAt)controllerConnectedAt=Date.now();
+  const presenceRef=fb.dbMod.ref(db,`rooms/${roomId}/devices/${user.uid}/presence`);
+  try{
+    controllerOnDisconnectHandle=fb.dbMod.onDisconnect(presenceRef);
+    controllerOnDisconnectHandle.update({online:false,lastSeenAt:fb.dbMod.serverTimestamp()}).catch(()=>{});
+  }catch{}
+  writeControllerPresence().catch(()=>{});
+  controllerPresenceTimer=setInterval(()=>writeControllerPresence().catch(()=>{}),12000);
 }
-window.addEventListener('bb4-phone-mode-changed',()=>syncControllerPresenceHeartbeat());
+window.addEventListener('bb4-phone-mode-changed',()=>{if(role==='controller'&&connected)writeControllerPresence().catch(()=>{});});
 async function applyCommand(cmd){
   const a=api();if(!a)return;
   const p=cmd.payload||{};
@@ -3351,6 +3597,11 @@ window.addEventListener('bb4-mobile-remote-command',async e=>{
     catch{toast('게임 모드 전송에 실패했습니다.')}
     return;
   }
+  if(d.action==='BOARD'){
+    try{await sendCommand('BOARD',{ok:true});}
+    catch{toast('문제판 전송에 실패했습니다.')}
+    return;
+  }
   if(d.action==='RESET_PROGRESS'){
     if(!confirm('방송 화면의 문제 사용 표시와 팀 색을 모두 초기화할까요? 문제와 미디어 데이터는 지워지지 않습니다.'))return;
     try{await sendCommand('RESET_PROGRESS',{ok:true});toast('전체 초기화를 전송했습니다.')}
@@ -3386,7 +3637,17 @@ try{
 
   await loadFirebase();
   if(isControllerContext()){
-    await connectControllerFromUrl();
+    const f=frag();
+    const explicitLink=f.role==='controller'&&!!f.room;
+    if(!explicitLink&&secureGet(CONTROLLER_REMOTE_ENABLED_STORE)==='0'){
+      const saved=savedControllerCredentials();
+      role='controller';roomId=saved?.room||'';roomKey=saved?.key||'';
+      try{fb?.dbMod?.goOffline?.(db)}catch{}
+      signalControllerStatus(true,false);
+      panelStatus('사회자 원격은 OFF 상태입니다. 등록은 유지되어 있으며 설정에서 다시 켤 수 있습니다.');
+    }else{
+      await connectControllerFromUrl();
+    }
   }else{
     role='display';
     const saved=jsonGet(OWNER_ROOM_STORE);
@@ -3397,7 +3658,7 @@ try{
     }else{
       badgeState(manualOff?'원격 끊김':'원격',manualOff?'is-warn':'');
       if(secureGet(OWNER_KEY_STORE)){
-        panelStatus(manualOff?'방송 PC 원격 연결이 사용자가 직접 끈 상태입니다. “방송 화면 원격 연결”을 누르면 다시 시작됩니다.':'이 기기의 관리자 등록 완료 · “방송 화면 원격 연결”을 누르면 바로 연결됩니다.');
+        panelStatus(manualOff?'방송 PC 원격 연결이 사용자가 직접 끈 상태입니다. “방송 PC 원격 켜기”를 누르면 다시 시작됩니다.':'이 기기의 관리자 등록 완료 · “방송 PC 원격 켜기”를 누르면 바로 연결됩니다.');
       }else{
         panelStatus('이 기기에서 처음 한 번만 방송 PC 관리자 키를 등록한 뒤 원격 연결을 시작하세요. 이후에는 계속 기억됩니다.');
       }
