@@ -190,6 +190,13 @@ button,input,textarea,select{font:inherit}button{cursor:pointer}button:focus-vis
 /* v25: keep visual answers hidden until image/video dimensions are known and the final layout is measured.
    This prevents a one-frame oversized answer-text flash before the answer media is fitted. */
 .question-stage.layout-pending{visibility:hidden !important;opacity:0 !important}
+/* v31: viewport-level paint curtain. The stage already renders hidden, but some Chromium/macOS
+   compositing paths can still expose a transient repaint while image/text geometry settles.
+   This curtain masks the entire broadcast viewport until the final fitted frame has actually painted. */
+#bb4QuestionPaintCurtain{
+  position:fixed;inset:0;z-index:99980;pointer-events:none;background:var(--bg);
+}
+#bb4QuestionPaintCurtain[hidden]{display:none!important}
 /* 4-choice answer mirrors the question's number-badge visual language. */
 .answer-direct.multiple-answer .answer-choice-result{
   width:min(980px,92%);min-height:116px;padding:20px 28px;
@@ -1326,6 +1333,7 @@ button,input,textarea,select{font:inherit}button{cursor:pointer}button:focus-vis
 (()=>{
 'use strict';
 const APP='BibleGoldenBell_4X4';
+const UI_BUILD='v31-broadcast-paint-curtain-2026-08-29';
 const PACK_MAGIC='BB4PACK3\n';
 const LS_KEY='bb4_state_v3';
 const PROGRESS_KEY='bb4_progress_v3';
@@ -1564,7 +1572,7 @@ function renderMobilePresenterBoard(){
 
   document.getElementById('app').innerHTML=`<main class="mobile-presenter-shell">
     <header class="mobile-presenter-header">
-      <div class="mobile-presenter-title"><span>${mobilePresenterMode==='remote'?'화면 리모콘':'문제·답 보기'}</span><strong>도전 바이블 골든벨</strong><small style="display:block;margin-top:3px;font-size:9px;font-weight:700;opacity:.55">v30 FINAL</small></div>
+      <div class="mobile-presenter-title"><span>${mobilePresenterMode==='remote'?'화면 리모콘':'문제·답 보기'}</span><strong>도전 바이블 골든벨</strong><small style="display:block;margin-top:3px;font-size:9px;font-weight:700;opacity:.55">v31 FINAL</small></div>
       <button class="mobile-presenter-settings" id="mobileSettings">⚙ 설정</button>
     </header>
     ${modeTabs}
@@ -1854,10 +1862,39 @@ function celebrate(team){const meta=TEAM_META[team]||TEAM_META[1],ov=document.cr
 // This prevents a late rAF/ResizeObserver callback from a previous question from
 // touching a newly-rendered answer and causing a one-frame size flash.
 let questionLayoutObserver=null,questionLayoutEpoch=0;
+let questionPaintCurtainEpoch=0;
 function stopQuestionLayoutObserver(){
   questionLayoutEpoch++;
   try{questionLayoutObserver?.disconnect()}catch{}
   questionLayoutObserver=null;
+}
+function showQuestionPaintCurtain(){
+  const epoch=++questionPaintCurtainEpoch;
+  let curtain=document.getElementById('bb4QuestionPaintCurtain');
+  if(!curtain){
+    curtain=document.createElement('div');
+    curtain.id='bb4QuestionPaintCurtain';
+    curtain.setAttribute('aria-hidden','true');
+    document.body.appendChild(curtain);
+  }
+  curtain.hidden=false;
+  // Safety only: a media/IndexedDB failure must never leave the broadcast screen covered forever.
+  setTimeout(()=>{
+    if(epoch!==questionPaintCurtainEpoch)return;
+    const el=document.getElementById('bb4QuestionPaintCurtain');
+    if(el)el.hidden=true;
+  },6000);
+  return epoch;
+}
+function releaseQuestionPaintCurtain(epoch){
+  if(epoch==null||epoch!==questionPaintCurtainEpoch)return;
+  // Keep the curtain for two real paint opportunities after final geometry is applied.
+  // The audience therefore sees only the already-composited final frame.
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    if(epoch!==questionPaintCurtainEpoch)return;
+    const curtain=document.getElementById('bb4QuestionPaintCurtain');
+    if(curtain)curtain.hidden=true;
+  }));
 }
 function px(v){return Number.parseFloat(v)||0}
 function innerSize(el){
@@ -2125,7 +2162,7 @@ function fitQuestionLayout(targetStage=null){
   stage.querySelectorAll('.ox div').forEach(el=>{el.style.height='';el.style.fontSize=''})
   if(stage.classList.contains('visual-question'))fitVisualQuestion(stage);else fitNonVisualQuestion(stage);
 }
-function scheduleQuestionLayout(){
+function scheduleQuestionLayout(paintCurtainEpoch=null){
   stopQuestionLayoutObserver();
   const stage=document.querySelector('.question-stage');
   if(!stage)return;
@@ -2142,7 +2179,9 @@ function scheduleQuestionLayout(){
     stage.style.visibility='';
     stage.style.opacity='';
     stage.classList.remove('layout-pending');
+    releaseQuestionPaintCurtain(paintCurtainEpoch);
   };
+  if(revealed)releaseQuestionPaintCurtain(paintCurtainEpoch);
   const mediaReady=()=>mediaEls.every(el=>{
     if(!preparedMedia.has(el))return false;
     if(el.tagName==='IMG')return el.complete&&el.naturalWidth>0&&el.naturalHeight>0;
@@ -2257,6 +2296,7 @@ function scheduleQuestionLayout(){
 
 let questionRenderGeneration=0;
 async function renderQuestion(i){
+  const paintCurtainEpoch=showQuestionPaintCurtain();
   const generation=++questionRenderGeneration;
   // v26: hide the OLD question/answer stage immediately, before any async media lookup.
   // Otherwise the previous image/text remains on screen while IndexedDB media URLs are resolved,
@@ -2419,7 +2459,7 @@ async function renderQuestion(i){
     else activeVideo.addEventListener('loadedmetadata',()=>setTimeout(tryVideoAuto,60),{once:true});
   }
 
-  scheduleQuestionLayout();
+  scheduleQuestionLayout(paintCurtainEpoch);
 }
 
 function mobileRemoteSettingsCard(){
