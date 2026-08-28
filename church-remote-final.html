@@ -1031,6 +1031,25 @@ button,input,textarea,select{font:inherit}button{cursor:pointer}button:focus-vis
   color:#07111d;
   background:#ff9000;
 }
+.mobile-presenter-modebar button:disabled{opacity:.42;cursor:not-allowed}
+.mobile-presenter-mode-note{
+  width:min(100%,560px);
+  margin:-4px auto 12px;
+  padding:8px 10px;
+  border:1px solid #213d58;
+  border-radius:10px;
+  color:#9fb0c3;
+  background:#07131f;
+  font-size:10px;
+  line-height:1.45;
+  text-align:center;
+  font-weight:800;
+}
+.mobile-presenter-mode-note strong{color:#dfe8f2}
+.mobile-presenter-mode-note.is-preview{border-color:#245d45;background:#0a1d17;color:#9fd8ba}
+.mobile-presenter-mode-note.is-preview strong{color:#bce8cf}
+.mobile-presenter-mode-note.is-remote{border-color:#815213;background:#241907;color:#ffc56d}
+.mobile-presenter-mode-note.is-remote strong{color:#ffd898}
 .mobile-presenter-remote-tools{
   width:min(100%,560px);
   margin:0 auto 12px;
@@ -1256,7 +1275,7 @@ const LOGO_DATA='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAWEAAADqCAYAAABz/
 const TYPE_LABELS={general:'일반·초성·빈칸',ox:'OX',image:'그림퀴즈',person:'인물퀴즈',video:'영상퀴즈',hidden:'숨은그림찾기'};
 const ANSWER_LABELS={short:'단답형',multiple:'4지선다'};
 const TEAM_META={1:{name:'1팀',color:'#f4a11a'},2:{name:'2팀',color:'#4e9be8'},3:{name:'3팀',color:'#8f7ee8'}};
-let adminIndex=0,adminPreviewMode='question',answerVisible=false,currentView='home',currentQuestion=0,autosaveTimer=null,miniEditSelection='1',mobilePreviewIndex=null,mobilePreviewAnswerVisible=false,mobilePresenterMode=(new URLSearchParams(location.hash.replace(/^#/,''))).get('role')==='controller'?'remote':'preview';
+let adminIndex=0,adminPreviewMode='question',answerVisible=false,currentView='home',currentQuestion=0,autosaveTimer=null,miniEditSelection='1',mobilePreviewIndex=null,mobilePreviewAnswerVisible=false,mobilePresenterMode='preview';
 const mediaUrlCache=new Map();
 
 function emptyQuestion(n){return {number:n,type:'general',answerType:'short',question:'',answer:'',hint:'',choices:['','','',''],correctChoice:0,oxAnswer:'O',hiddenShowText:false,audioPlayback:'manual',answerAudioPlayback:'manual',videoPlayback:'manual',answerVideoPlayback:'manual',questionMediaLayout:'full',answerMediaLayout:'full',media:{questionImage:null,answerImage:null,video:null,answerVideo:null,audio:null,answerAudio:null},mediaNames:{}}}
@@ -1374,14 +1393,29 @@ function mobileQuestionHasContent(q){
   );
 }
 
+function mobileSavedControllerCredentials(){
+  try{
+    const raw=localStorage.getItem('bb4_remote_controller_credentials_v4');
+    if(!raw)return null;
+    const v=JSON.parse(raw);
+    if(v&&typeof v==='object'&&String(v.room||'').trim())return {room:String(v.room),key:String(v.key||'')};
+  }catch{}
+  return null;
+}
 function mobileRemoteAvailable(){
   const p=new URLSearchParams(location.hash.replace(/^#/,''));
-  return p.get('role')==='controller'&&!!p.get('room');
+  if(p.get('role')==='controller'&&!!p.get('room'))return true;
+  if(window.__BB4_REMOTE_CONTROLLER_AVAILABLE__===true)return true;
+  return !!mobileSavedControllerCredentials()?.room;
+}
+function mobileRemoteConnected(){
+  return window.__BB4_REMOTE_CONTROLLER_CONNECTED__===true;
 }
 function setMobilePresenterMode(mode){
-  const next=(mode==='remote'&&mobileRemoteAvailable())?'remote':'preview';
+  const next=(mode==='remote'&&mobileRemoteAvailable()&&mobileRemoteConnected())?'remote':'preview';
   mobilePresenterMode=next;
   window.__BB4_PHONE_MODE__=next;
+  document.getElementById('bb4TeamPicker')?.classList.remove('is-open');
   mobilePreviewIndex=null;
   mobilePreviewAnswerVisible=false;
   currentView='home';
@@ -1391,12 +1425,24 @@ function setMobilePresenterMode(mode){
   },0);
 }
 window.__BB4_PHONE_MODE__=mobilePresenterMode;
+window.addEventListener('bb4-remote-controller-status',e=>{
+  const d=e.detail||{};
+  window.__BB4_REMOTE_CONTROLLER_AVAILABLE__=!!d.available;
+  window.__BB4_REMOTE_CONTROLLER_CONNECTED__=!!d.connected;
+  if(!d.available&&mobilePresenterMode==='remote'){
+    mobilePresenterMode='preview';
+    window.__BB4_PHONE_MODE__='preview';
+  }
+  if(!isMobilePresenterDevice()||currentView==='admin')return;
+  if(currentView==='home')renderMobilePresenterBoard();
+});
 
 function renderMobilePresenterBoard(){
   mobilePreviewIndex=null;
   mobilePreviewAnswerVisible=false;
 
   const remoteAvailable=mobileRemoteAvailable();
+  const remoteConnected=mobileRemoteConnected();
   if(!remoteAvailable&&mobilePresenterMode==='remote')mobilePresenterMode='preview';
   window.__BB4_PHONE_MODE__=mobilePresenterMode;
 
@@ -1408,13 +1454,18 @@ function renderMobilePresenterBoard(){
   }).join('');
 
   const hasAny=state.questions.some(mobileQuestionHasContent);
-  const modeTabs=remoteAvailable?`<div class="mobile-presenter-modebar" role="tablist" aria-label="휴대폰 사용 모드">
-      <button type="button" data-phone-mode="preview" class="${mobilePresenterMode==='preview'?'is-active':''}">문제·답 보기</button>
-      <button type="button" data-phone-mode="remote" class="${mobilePresenterMode==='remote'?'is-active':''}">화면 리모콘</button>
+  const modeTabs=remoteAvailable?`<div class="mobile-presenter-modebar" role="tablist" aria-label="사회자 사용 모드">
+      <button type="button" data-phone-mode="preview" class="${mobilePresenterMode==='preview'?'is-active':''}" aria-pressed="${mobilePresenterMode==='preview'}">문제·답 보기</button>
+      <button type="button" data-phone-mode="remote" class="${mobilePresenterMode==='remote'?'is-active':''}" aria-pressed="${mobilePresenterMode==='remote'}" ${remoteConnected?'':'disabled'}>화면 리모콘</button>
+    </div>
+    <div class="mobile-presenter-mode-note ${mobilePresenterMode==='remote'?'is-remote':'is-preview'}">
+      ${mobilePresenterMode==='remote'
+        ?'<strong>방송 조작 모드</strong> · 여기서 누르는 진행 동작은 PC/TV에 즉시 반영됩니다.'
+        :'<strong>개인 미리보기</strong> · 문제와 정답을 봐도 PC/TV 화면은 바뀌지 않습니다.'}
     </div>`:'';
 
   const remoteTools=(remoteAvailable&&mobilePresenterMode==='remote')?`<section class="mobile-presenter-remote-tools">
-      <div class="mobile-presenter-remote-status" id="mobileRemoteInlineStatus">방송 화면과 동기화 중…</div>
+      <div class="mobile-presenter-remote-status" id="mobileRemoteInlineStatus">${remoteConnected?'방송 화면 연결됨':'방송 화면 연결 확인 중…'}</div>
       <div class="mobile-presenter-mode-buttons">
         <button type="button" data-remote-mode="individual" class="${remoteMode==='individual'?'is-active':''}">개인</button>
         <button type="button" data-remote-mode="2" class="${remoteMode==='2'?'is-active':''}">2팀</button>
@@ -2386,7 +2437,7 @@ if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)){
 render();
 })();
 </script>
-<!-- BB4_REMOTE_BEGIN_RUNTIME FINAL_V14_AUTH_SDK -->
+<!-- BB4_REMOTE_BEGIN_RUNTIME FINAL_V16_MOBILE_DUAL_MODE_SAFE -->
 <script>
 (async()=>{
 'use strict';
@@ -2408,7 +2459,7 @@ const LEGACY_REMOTE_KEYS=[
   'bb4_remote_owner_room_session_v1','bb4_remote_owner_key_session_v1','bb4_remote_controller_room_session_v1',
   'bb4_remote_owner_room_v3','bb4_remote_owner_key_v3','bb4_remote_controller_room_v3'
 ];
-const BB4_REMOTE_BUILD='v15-test-new-key-2026-08-28';
+const BB4_REMOTE_BUILD='v16-final-mobile-dual-safe-2026-08-28';
 const BB4_ALLOWED_ORIGIN='https://bibleplay.github.io';
 const BB4_ALLOWED_PATH_PREFIX='/BibleGoldenBell_4X4/';
 
@@ -2478,6 +2529,11 @@ function isHandheldGeneralContext(){
   return coarse&&matchMedia('(max-width:1366px)').matches;
 }
 function modeLabel(m){return m==='2'?'2팀':m==='3'?'3팀':'개인'}
+function signalControllerStatus(available,controllerConnected=connected){
+  window.__BB4_REMOTE_CONTROLLER_AVAILABLE__=!!available;
+  window.__BB4_REMOTE_CONTROLLER_CONNECTED__=!!controllerConnected;
+  try{window.dispatchEvent(new CustomEvent('bb4-remote-controller-status',{detail:{available:!!available,connected:!!controllerConnected}}))}catch{}
+}
 function isOfficialRemoteOrigin(){
   return location.origin===BB4_ALLOWED_ORIGIN && location.pathname.startsWith(BB4_ALLOWED_PATH_PREFIX);
 }
@@ -2853,6 +2909,7 @@ async function connectControllerFromUrl(){
   const targetKey=fromLink?(f.key||((saved?.room===f.room)?saved.key:'')):(saved?.key||'');
   if(!targetRoom)return false;
   role='controller';roomId=targetRoom;
+  signalControllerStatus(true,false);
   try{
     await ensureAuth();
     if(targetKey){
@@ -2866,7 +2923,8 @@ async function connectControllerFromUrl(){
     }
 
     connected=true;
-    window.__BB4_PHONE_MODE__='remote';
+    if(window.__BB4_PHONE_MODE__!=='remote')window.__BB4_PHONE_MODE__='preview';
+    signalControllerStatus(true,true);
     unsubState=fb.dbMod.onValue(
       fb.dbMod.ref(db,`rooms/${roomId}/state`),
       snap=>{
@@ -2882,7 +2940,13 @@ async function connectControllerFromUrl(){
         decorateMobileBoard();
         try{window.__BB4_MOBILE_APPLY_REMOTE_STATE__?.(displayState)}catch{}
       },
-      ()=>{badgeState('권한 없음','is-bad');panelStatus('이 사회자 링크가 만료되었거나 권한이 없습니다. 새 링크를 받아주세요.')}
+      ()=>{
+        connected=false;
+        secureRemove(CONTROLLER_ROOM_STORE);
+        signalControllerStatus(false,false);
+        badgeState('권한 없음','is-bad');
+        panelStatus('이 사회자 링크가 만료되었거나 권한이 없습니다. 새 링크를 받아주세요.');
+      }
     );
     setPanelButtons();
     installControllerEvents();
@@ -2890,6 +2954,7 @@ async function connectControllerFromUrl(){
     return true;
   }catch(err){
     console.error(err);connected=false;
+    signalControllerStatus(false,false);
     const msg=String(err?.code||err?.message||'');
     if(msg.includes('BB4_REMOTE_ORIGIN_NOT_ALLOWED'))panelStatus('보안을 위해 사회자 원격은 공식 GitHub Pages 주소에서만 실행됩니다.');
     else if(msg.includes('operation-not-allowed'))panelStatus('Firebase Authentication에서 익명 로그인을 먼저 켜야 합니다.');
@@ -2902,7 +2967,7 @@ async function connectControllerFromUrl(){
   }
 }
 async function sendCommand(action,payload){
-  if(!connected||role!=='controller')return false;
+  if(!connected||role!=='controller'||window.__BB4_PHONE_MODE__!=='remote')return false;
   const mine=api()?.getSnapshot?.();
   const cmd={
     id:`${Date.now()}-${rand(6)}`,
@@ -3053,11 +3118,13 @@ window.addEventListener('bb4-mobile-remote-command',async e=>{
   }
 });
 window.addEventListener('bb4-mobile-board-rendered',()=>{
-  if(role==='controller'&&connected&&window.__BB4_PHONE_MODE__==='remote'){
+  if(role==='controller'&&connected){
+    // Broadcast progress/team colors are informative in BOTH modes.
+    // Only live-remote mode is allowed to pull the presenter UI to the TV's current question.
     decorateMobileBoard();
     const el=document.getElementById('mobileRemoteInlineStatus');
     if(el&&displayState)el.textContent=`방송 화면 연결됨 · ${modeLabel(displayState.mode)} · ${displayState.view==='question'?`${Number(displayState.question)+1}번 ${displayState.answerVisible?'정답':'문제'}`:'문제판'}`;
-    if(currentView==='home'&&displayState) setTimeout(()=>{
+    if(window.__BB4_PHONE_MODE__==='remote'&&currentView==='home'&&displayState) setTimeout(()=>{
       try{window.__BB4_MOBILE_APPLY_REMOTE_STATE__?.(displayState)}catch{}
     },0);
   }
@@ -3068,6 +3135,7 @@ mountUi();
 try{
   if(isHandheldGeneralContext()){
     role='handheld';
+    signalControllerStatus(false,false);
     const badge=document.getElementById('bb4RemoteBadge');
     const panel=document.getElementById('bb4RemotePanel');
     if(badge)badge.hidden=true;
