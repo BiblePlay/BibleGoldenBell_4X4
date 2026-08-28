@@ -1564,7 +1564,7 @@ function renderMobilePresenterBoard(){
 
   document.getElementById('app').innerHTML=`<main class="mobile-presenter-shell">
     <header class="mobile-presenter-header">
-      <div class="mobile-presenter-title"><span>${mobilePresenterMode==='remote'?'화면 리모콘':'문제·답 보기'}</span><strong>도전 바이블 골든벨</strong><small style="display:block;margin-top:3px;font-size:9px;font-weight:700;opacity:.55">v25 FINAL</small></div>
+      <div class="mobile-presenter-title"><span>${mobilePresenterMode==='remote'?'화면 리모콘':'문제·답 보기'}</span><strong>도전 바이블 골든벨</strong><small style="display:block;margin-top:3px;font-size:9px;font-weight:700;opacity:.55">v26 FINAL</small></div>
       <button class="mobile-presenter-settings" id="mobileSettings">⚙ 설정</button>
     </header>
     ${modeTabs}
@@ -2161,7 +2161,15 @@ function scheduleQuestionLayout(){
   if('ResizeObserver' in window){questionLayoutObserver=new ResizeObserver(run);questionLayoutObserver.observe(stage)}
 }
 
+let questionRenderGeneration=0;
 async function renderQuestion(i){
+  const generation=++questionRenderGeneration;
+  // v26: hide the OLD question/answer stage immediately, before any async media lookup.
+  // Otherwise the previous image/text remains on screen while IndexedDB media URLs are resolved,
+  // which can look like a full-screen flash before the new fitted layout appears.
+  const previousStage=document.querySelector('.question-stage');
+  if(previousStage)previousStage.style.visibility='hidden';
+
   const q=state.questions[i]||emptyQuestion(i+1);
   const qImg=await mediaUrl(q.media.questionImage);
   const aImg=await mediaUrl(q.media.answerImage);
@@ -2169,6 +2177,9 @@ async function renderQuestion(i){
   const answerVideo=await mediaUrl(q.media.answerVideo);
   const audio=await mediaUrl(q.media.audio);
   const answerAudio=await mediaUrl(q.media.answerAudio);
+
+  // If another question/answer render started while media was loading, discard this stale render.
+  if(generation!==questionRenderGeneration)return;
 
   let stage='';
   if(!answerVisible){
