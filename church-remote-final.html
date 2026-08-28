@@ -1570,11 +1570,16 @@ function renderMobilePresenterBoard(){
       <p class="mobile-presenter-remote-help">짧게 누르면 문제를 방송 화면에 열고, 팀전에서는 번호를 길게 눌러 팀 색을 지정·변경합니다.</p>
     </section>`:'';
 
+  const presenterHomeGuide=(!isStandaloneApp()&&(remoteAvailable||!!mobileSavedControllerCredentials()?.room))
+    ?`<div style="margin:0 14px 10px;padding:10px 12px;border:1px solid #2b4968;border-radius:10px;background:#0a1928;color:#cbd7e5;font-size:11px;line-height:1.55"><strong style="color:#ffad27">사회자용 링크</strong> · 이 폰에 저장하려면 iPhone/iPad는 <b>공유 → 홈 화면에 추가</b>, Galaxy/Android는 <b>브라우저 메뉴 → 홈 화면에 추가(또는 앱 설치)</b>를 선택하세요. 사회자 연결 리셋 전까지 같은 아이콘을 계속 사용할 수 있습니다.</div>`
+    :'';
+
   document.getElementById('app').innerHTML=`<main class="mobile-presenter-shell">
     <header class="mobile-presenter-header">
-      <div class="mobile-presenter-title"><span>${mobilePresenterMode==='remote'?'화면 리모콘':'문제·답 보기'}</span><strong>도전 바이블 골든벨</strong><small style="display:block;margin-top:3px;font-size:9px;font-weight:700;opacity:.55">v31 FINAL</small></div>
+      <div class="mobile-presenter-title"><span>${mobilePresenterMode==='remote'?'화면 리모콘':'문제·답 보기'}</span><strong>도전 바이블 골든벨</strong><small style="display:block;margin-top:3px;font-size:9px;font-weight:700;opacity:.55">v32 FINAL</small></div>
       <button class="mobile-presenter-settings" id="mobileSettings">⚙ 설정</button>
     </header>
+    ${presenterHomeGuide}
     ${modeTabs}
     ${remoteTools}
     ${hasAny?'':`<p class="mobile-presenter-note">문제가 아직 없습니다. 위의 설정에서 관리자 모드로 들어가 데이터팩을 불러오세요.</p>`}
@@ -2485,6 +2490,7 @@ function desktopRemoteSettingsCard(){
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap">
       <div>
         <div style="font-size:12px;font-weight:950;color:#0e3166;letter-spacing:.03em">원격 진행 연결 상태</div>
+        <div style="margin-top:5px;color:#64748b;font-size:10px"><strong>방송용 링크</strong> = 방송실 PC/Mac · <strong>사회자용 링크</strong> = 폰/태블릿</div>
         <div style="display:grid;gap:6px;margin-top:9px;font-size:13px">
           <div>방송 PC 원격 · <strong id="desktopRemoteDisplayStatus">확인 중…</strong></div>
           <div>사회자 연결키 · <strong id="desktopRemoteLinkStatus">확인 중…</strong></div>
@@ -2495,7 +2501,8 @@ function desktopRemoteSettingsCard(){
       <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
         <button type="button" class="admin-secondary-button" id="desktopRemoteConnect">방송 PC 원격 켜기</button>
         <button type="button" class="admin-secondary-button" id="desktopRemoteDisconnect" style="border-color:#e6b7b7;color:#a32626">방송 PC 원격 끄기</button>
-        <button type="button" class="admin-secondary-button" id="desktopRemoteCopy">사회자 링크 복사</button>
+        <button type="button" class="admin-secondary-button" id="desktopBroadcastCopy">방송용 링크 복사</button>
+        <button type="button" class="admin-secondary-button" id="desktopRemoteCopy">사회자용 링크 복사</button>
         <button type="button" class="admin-secondary-button" id="desktopRemoteRotate">사회자 연결 리셋</button>
       </div>
     </div>
@@ -2590,7 +2597,7 @@ function updateRemoteSettingsCards(){
 function renderAdmin(){
   currentView='admin';const q=state.questions[adminIndex];const slots=state.questions.map((x,i)=>`<button class="${i===adminIndex?'is-selected ':''}${questionFilled(x)?'is-filled':''}" data-admin-num="${i}"><strong>${i+1}</strong></button>`).join('');
   document.getElementById('app').innerHTML=`<div class="admin-shell">${commonTopbar()}<main class="admin-scroll-area"><section class="admin-panel"><header class="admin-header"><div><span class="kicker">ADMIN</span><h1>16문제 관리</h1><p>1번부터 16번까지 각 문제의 유형과 내용을 직접 설정합니다.</p></div><div class="admin-header-actions"><button class="admin-secondary-button" id="exportBtn">⇩ 내보내기</button><button class="admin-secondary-button" id="importBtn">☁ 불러오기</button><button class="admin-secondary-button" id="eventBtn">${isMobilePresenterDevice()?'← 문제판':'← 행사 화면'}</button></div></header>${shouldUseOwnerRemoteAdminCard()?desktopRemoteSettingsCard():mobileRemoteSettingsCard()}<div class="admin-layout"><aside class="admin-nav"><div class="admin-nav-kicker">4×4 BOARD</div><div class="admin-nav-title">16문제</div><div class="admin-slot-label">문제 번호</div><div class="admin-slots">${slots}</div></aside><form class="admin-form" id="adminForm"><div class="admin-form-title">${adminIndex+1}번 문제</div><div class="admin-workspace"><div class="admin-editor"><div class="admin-form-grid"><label class="admin-field"><span>문제 유형</span><select id="qType">${Object.entries(TYPE_LABELS).map(([v,l])=>`<option value="${v}" ${q.type===v?'selected':''}>${l}</option>`).join('')}</select></label><label class="admin-field" id="answerTypeField"><span>답변 방식</span><select id="answerType"><option value="short" ${q.answerType==='short'?'selected':''}>단답형</option><option value="multiple" ${q.answerType==='multiple'?'selected':''}>4지선다</option></select></label></div><div id="hiddenOption"></div><label class="admin-field full"><span>문제</span><textarea id="qText">${esc(q.question)}</textarea></label><div id="choicesHost"></div><label class="admin-field full" id="answerTextField"><span>정답</span><textarea id="qAnswer" rows="5">${esc(q.answer)}</textarea></label><label class="admin-field full"><span>힌트 (선택)</span><input id="qHint" value="${displayText(q.hint)}" placeholder="필요한 문제에만 입력하세요."></label><div class="media-grid">${mediaCard(q,'questionImage','문제 이미지','image/*')}${mediaCard(q,'answerImage','정답 이미지','image/*')}${mediaCard(q,'video','문제 동영상','video/*')}${mediaCard(q,'answerVideo','정답 동영상','video/*')}${mediaCard(q,'audio','문제 음성','audio/*')}${mediaCard(q,'answerAudio','정답 음성','audio/*')}</div><div class="media-layout-options"><span>문제 미디어 크기</span><label><input type="radio" name="questionMediaLayout" value="full" ${q.questionMediaLayout!=='compact'?'checked':''}> 크게</label><label><input type="radio" name="questionMediaLayout" value="compact" ${q.questionMediaLayout==='compact'?'checked':''}> 작게 · 글자 중심</label></div><div class="media-layout-options"><span>정답 미디어 크기</span><label><input type="radio" name="answerMediaLayout" value="full" ${q.answerMediaLayout!=='compact'?'checked':''}> 크게</label><label><input type="radio" name="answerMediaLayout" value="compact" ${q.answerMediaLayout==='compact'?'checked':''}> 작게 · 글자 중심</label></div><div class="audio-options"><span>문제 동영상 재생</span><label><input type="radio" name="videoPlayback" value="manual" ${q.videoPlayback!=='auto'?'checked':''}> 수동</label><label><input type="radio" name="videoPlayback" value="auto" ${q.videoPlayback==='auto'?'checked':''}> 자동재생</label></div><div class="audio-options"><span>정답 동영상 재생</span><label><input type="radio" name="answerVideoPlayback" value="manual" ${q.answerVideoPlayback!=='auto'?'checked':''}> 수동</label><label><input type="radio" name="answerVideoPlayback" value="auto" ${q.answerVideoPlayback==='auto'?'checked':''}> 자동재생</label></div><div class="audio-options"><span>문제 음성 재생</span><label><input type="radio" name="audioPlayback" value="manual" ${q.audioPlayback!=='auto'?'checked':''}> 수동</label><label><input type="radio" name="audioPlayback" value="auto" ${q.audioPlayback==='auto'?'checked':''}> 자동재생</label></div><div class="audio-options"><span>정답 음성 재생</span><label><input type="radio" name="answerAudioPlayback" value="manual" ${q.answerAudioPlayback!=='auto'?'checked':''}> 수동</label><label><input type="radio" name="answerAudioPlayback" value="auto" ${q.answerAudioPlayback==='auto'?'checked':''}> 자동재생</label></div><footer class="admin-form-footer"><div class="left-actions"><button type="button" class="clear-btn" id="clearQuestion">이 문제 초기화</button></div><span class="autosave-note" id="autosaveNote">변경 내용 자동 저장</span><button type="submit" class="save-btn">저장</button></footer></div><aside class="admin-preview"><div class="preview-head"><strong>실제 화면 미리보기</strong><div class="preview-tabs"><button type="button" class="preview-tab ${adminPreviewMode==='question'?'active':''}" data-preview-mode="question">문제</button><button type="button" class="preview-tab ${adminPreviewMode==='answer'?'active':''}" data-preview-mode="answer">정답</button></div></div><div class="preview-screen" id="previewScreen"></div></aside></div></form></div></section></main></div>`;
-  wireCommonTopbar();document.querySelectorAll('[data-admin-num]').forEach(b=>b.addEventListener('click',()=>{saveAdminForm(false);adminIndex=Number(b.dataset.adminNum);adminPreviewMode='question';renderAdmin()}));document.getElementById('eventBtn').addEventListener('click',()=>{saveAdminForm(false);currentView='home';render()});document.getElementById('exportBtn').addEventListener('click',()=>{saveAdminForm(false);exportPack()});document.getElementById('importBtn').addEventListener('click',chooseImport);document.getElementById('adminForm').addEventListener('submit',e=>{e.preventDefault();saveAdminForm(true)});document.getElementById('clearQuestion').addEventListener('click',clearAdminQuestion);document.getElementById('qType').addEventListener('change',handleQuestionTypeChange);document.getElementById('answerType')?.addEventListener('change',()=>{syncAdminDynamic();queueAutosave()});['qText','qAnswer','qHint'].forEach(id=>document.getElementById(id)?.addEventListener('input',queueAutosave));document.querySelectorAll('input[name="questionMediaLayout"],input[name="answerMediaLayout"],input[name="videoPlayback"],input[name="answerVideoPlayback"],input[name="audioPlayback"],input[name="answerAudioPlayback"]').forEach(x=>x.addEventListener('change',queueAutosave));document.querySelectorAll('[data-preview-mode]').forEach(b=>b.addEventListener('click',()=>{adminPreviewMode=b.dataset.previewMode;document.querySelectorAll('[data-preview-mode]').forEach(x=>x.classList.toggle('active',x.dataset.previewMode===adminPreviewMode));updatePreview()}));document.getElementById('mobileToggleRemote')?.addEventListener('click',async()=>{try{await window.__BB4_TOGGLE_CONTROLLER_REMOTE__?.();}finally{renderAdmin();}});document.getElementById('mobileUnregisterRemote')?.addEventListener('click',async()=>{if(!confirm('이 기기의 원격 등록을 해제하면 다시 사용하려면 사회자 링크를 다시 받아야 합니다. 계속하시겠습니까?'))return;try{await window.__BB4_DISCONNECT_CONTROLLER__?.();}finally{renderAdmin();}});document.getElementById('desktopRemoteConnect')?.addEventListener('click',()=>window.__BB4_DISPLAY_CONNECT__?.());document.getElementById('desktopRemoteCopy')?.addEventListener('click',()=>window.__BB4_COPY_CONTROLLER_LINK__?.());document.getElementById('desktopRemoteRotate')?.addEventListener('click',()=>window.__BB4_ROTATE_CONTROLLER_ROOM__?.());document.getElementById('desktopRemoteDisconnect')?.addEventListener('click',()=>{if(confirm('이 방송 PC의 원격 연결을 끊을까요? 문제 데이터와 사회자 연결키는 지워지지 않으며, 다시 연결 버튼으로 재개할 수 있습니다.'))window.__BB4_DISCONNECT_DISPLAY__?.();});updateRemoteSettingsCards();syncAdminDynamic();wireMediaCards();updatePreview();
+  wireCommonTopbar();document.querySelectorAll('[data-admin-num]').forEach(b=>b.addEventListener('click',()=>{saveAdminForm(false);adminIndex=Number(b.dataset.adminNum);adminPreviewMode='question';renderAdmin()}));document.getElementById('eventBtn').addEventListener('click',()=>{saveAdminForm(false);currentView='home';render()});document.getElementById('exportBtn').addEventListener('click',()=>{saveAdminForm(false);exportPack()});document.getElementById('importBtn').addEventListener('click',chooseImport);document.getElementById('adminForm').addEventListener('submit',e=>{e.preventDefault();saveAdminForm(true)});document.getElementById('clearQuestion').addEventListener('click',clearAdminQuestion);document.getElementById('qType').addEventListener('change',handleQuestionTypeChange);document.getElementById('answerType')?.addEventListener('change',()=>{syncAdminDynamic();queueAutosave()});['qText','qAnswer','qHint'].forEach(id=>document.getElementById(id)?.addEventListener('input',queueAutosave));document.querySelectorAll('input[name="questionMediaLayout"],input[name="answerMediaLayout"],input[name="videoPlayback"],input[name="answerVideoPlayback"],input[name="audioPlayback"],input[name="answerAudioPlayback"]').forEach(x=>x.addEventListener('change',queueAutosave));document.querySelectorAll('[data-preview-mode]').forEach(b=>b.addEventListener('click',()=>{adminPreviewMode=b.dataset.previewMode;document.querySelectorAll('[data-preview-mode]').forEach(x=>x.classList.toggle('active',x.dataset.previewMode===adminPreviewMode));updatePreview()}));document.getElementById('mobileToggleRemote')?.addEventListener('click',async()=>{try{await window.__BB4_TOGGLE_CONTROLLER_REMOTE__?.();}finally{renderAdmin();}});document.getElementById('mobileUnregisterRemote')?.addEventListener('click',async()=>{if(!confirm('이 기기의 원격 등록을 해제하면 다시 사용하려면 사회자 링크를 다시 받아야 합니다. 계속하시겠습니까?'))return;try{await window.__BB4_DISCONNECT_CONTROLLER__?.();}finally{renderAdmin();}});document.getElementById('desktopRemoteConnect')?.addEventListener('click',()=>window.__BB4_DISPLAY_CONNECT__?.());document.getElementById('desktopBroadcastCopy')?.addEventListener('click',copyBroadcastLink);document.getElementById('desktopRemoteCopy')?.addEventListener('click',()=>window.__BB4_COPY_CONTROLLER_LINK__?.());document.getElementById('desktopRemoteRotate')?.addEventListener('click',()=>window.__BB4_ROTATE_CONTROLLER_ROOM__?.());document.getElementById('desktopRemoteDisconnect')?.addEventListener('click',()=>{if(confirm('이 방송 PC의 원격 연결을 끊을까요? 문제 데이터와 사회자 연결키는 지워지지 않으며, 다시 연결 버튼으로 재개할 수 있습니다.'))window.__BB4_DISCONNECT_DISPLAY__?.();});updateRemoteSettingsCards();syncAdminDynamic();wireMediaCards();updatePreview();
 }
 
 async function handleQuestionTypeChange(){
@@ -2854,7 +2861,7 @@ const LEGACY_REMOTE_KEYS=[
   'bb4_remote_owner_room_session_v1','bb4_remote_owner_key_session_v1','bb4_remote_controller_room_session_v1',
   'bb4_remote_owner_room_v3','bb4_remote_owner_key_v3','bb4_remote_controller_room_v3'
 ];
-const BB4_REMOTE_BUILD='v29-unified-prelayout-gate-2026-08-28';
+const BB4_REMOTE_BUILD='v32-final-link-ui-2026-08-29';
 const BB4_ALLOWED_ORIGIN='https://bibleplay.github.io';
 const BB4_ALLOWED_PATH_PREFIX='/BibleGoldenBell_4X4/';
 
@@ -3091,7 +3098,7 @@ function mountUi(){
   panel.id='bb4RemotePanel';
   panel.innerHTML=`<section class="bb4-remote-card" role="dialog" aria-modal="true" aria-labelledby="bb4RemoteTitle">
     <h3 id="bb4RemoteTitle">교회 원격 진행</h3>
-    <p id="bb4RemoteDesc">방송 화면에서만 원격 연결을 시작합니다. 휴대폰은 방송 화면에서 만든 사회자 링크로 접속합니다.</p>
+    <p id="bb4RemoteDesc">방송 화면에서만 원격 연결을 시작합니다. 휴대폰은 방송 화면에서 만든 사회자용 링크로 접속합니다.</p>
     <div id="bb4OwnerKeyWrap" style="margin:0 0 12px" hidden>
       <div style="padding:12px;border:1px solid #315a80;border-radius:12px;background:#0a1b2c">
         <div style="font-size:12px;font-weight:900;margin-bottom:8px">방송 PC 관리자 등록</div>
@@ -3126,7 +3133,8 @@ function mountUi(){
     <div class="bb4-remote-status" id="bb4RemotePanelStatus">연결되지 않았습니다.</div>
     <div class="bb4-remote-actions">
       <button class="primary wide" id="bb4RemoteConnectDisplay" hidden>방송 PC 원격 켜기</button>
-      <button class="primary wide" id="bb4RemoteCopy" hidden>사회자 링크 복사</button>
+      <button id="bb4BroadcastCopy" hidden>방송용 링크 복사</button>
+      <button class="primary wide" id="bb4RemoteCopy" hidden>사회자용 링크 복사</button>
       <button id="bb4RemoteOwnerEdit" hidden>관리자 키 다시 등록</button>
       <button id="bb4RemoteRotate" hidden>사회자 연결 리셋</button>
       <button id="bb4RemoteDisconnectDisplay" hidden>방송 PC 원격 끄기</button>
@@ -3208,6 +3216,7 @@ function mountUi(){
   });
 
 
+  document.getElementById('bb4BroadcastCopy').addEventListener('click',copyBroadcastLink);
   document.getElementById('bb4RemoteCopy').addEventListener('click',copyControllerLink);
   document.getElementById('bb4RemoteRotate').addEventListener('click',rotateRoom);
   document.getElementById('bb4RemoteDisconnectDisplay').addEventListener('click',()=>{if(confirm('이 방송 PC의 원격 연결을 끊을까요? 문제 데이터와 사회자 연결키는 유지됩니다.'))disconnectDisplayDevice();});
@@ -3230,6 +3239,7 @@ function panelStatus(text){
 function setPanelButtons(){
   const title=document.getElementById('bb4RemoteTitle');
   const desc=document.getElementById('bb4RemoteDesc');
+  const broadcastCopy=document.getElementById('bb4BroadcastCopy');
   const copy=document.getElementById('bb4RemoteCopy');
   const rotate=document.getElementById('bb4RemoteRotate');
   const reset=document.getElementById('bb4RemoteReset');
@@ -3246,7 +3256,7 @@ function setPanelButtons(){
   if(title)title.textContent=isController?'사회자 원격 진행':'교회 원격 진행';
   if(desc)desc.textContent=isController
     ?'이 휴대폰은 사회자 컨트롤 화면입니다. 문제 번호를 탭하면 방송 화면이 바로 진행됩니다.'
-    :'방송 화면에서만 원격 연결을 시작합니다. 연결 후 “사회자 링크 복사”를 눌러 휴대폰으로 보내세요.';
+    :'방송 화면에서만 원격 연결을 시작합니다. 방송실에는 “방송용 링크”, 휴대폰에는 “사회자용 링크”를 사용하세요.';
 
   syncOwnerKeyUi();
   if(registered)registered.hidden=!(isDisplay&&hasOwner);
@@ -3257,6 +3267,7 @@ function setPanelButtons(){
     connect.disabled=false;
     connect.textContent='방송 PC 원격 켜기';
   }
+  if(broadcastCopy){broadcastCopy.hidden=!isDisplay;broadcastCopy.disabled=false;}
   if(copy){copy.hidden=!(isDisplay&&connected);copy.disabled=false;}
   if(rotate){rotate.hidden=!(isDisplay&&connected);rotate.disabled=false;}
   if(disconnectDisplay){disconnectDisplay.hidden=!(isDisplay&&connected);disconnectDisplay.disabled=false;}
@@ -3486,6 +3497,20 @@ window.__BB4_IDENTIFY_CONTROLLER__=identifyControllerDevice;
 window.__BB4_SET_CONTROLLER_PAUSED_BY_UID__=setControllerPausedByUid;
 window.__BB4_DELETE_CONTROLLER_REGISTRATION_BY_UID__=deleteControllerRegistrationByUid;
 
+function broadcastUrl(){
+  const u=new URL(location.href);
+  u.search='';
+  u.hash='';
+  return u.toString();
+}
+async function copyBroadcastLink(){
+  const text=broadcastUrl();
+  try{await navigator.clipboard.writeText(text);toast('방송용 링크를 복사했습니다.')}
+  catch{
+    const ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.opacity='0';
+    document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();toast('방송용 링크를 복사했습니다.');
+  }
+}
 function controllerUrl(){
   const u=new URL(location.href);
   u.searchParams.set('bb4remote','v29');
@@ -3495,10 +3520,10 @@ function controllerUrl(){
 async function copyControllerLink(){
   if(!connected||role!=='display')return;
   const text=controllerUrl();
-  try{await navigator.clipboard.writeText(text);toast('사회자 링크를 복사했습니다.')}
+  try{await navigator.clipboard.writeText(text);toast('사회자용 링크를 복사했습니다.')}
   catch{
     const ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.opacity='0';
-    document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();toast('사회자 링크를 복사했습니다.');
+    document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();toast('사회자용 링크를 복사했습니다.');
   }
 }
 async function rotateRoom(){
