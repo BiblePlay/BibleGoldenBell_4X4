@@ -189,7 +189,7 @@ button,input,textarea,select{font:inherit}button{cursor:pointer}button:focus-vis
 }
 /* v25: keep visual answers hidden until image/video dimensions are known and the final layout is measured.
    This prevents a one-frame oversized answer-text flash before the answer media is fitted. */
-.question-stage.visual-answer-stage.layout-pending{visibility:hidden !important;opacity:0 !important}
+.question-stage.layout-pending{visibility:hidden !important;opacity:0 !important}
 /* 4-choice answer mirrors the question's number-badge visual language. */
 .answer-direct.multiple-answer .answer-choice-result{
   width:min(980px,92%);min-height:116px;padding:20px 28px;
@@ -1564,7 +1564,7 @@ function renderMobilePresenterBoard(){
 
   document.getElementById('app').innerHTML=`<main class="mobile-presenter-shell">
     <header class="mobile-presenter-header">
-      <div class="mobile-presenter-title"><span>${mobilePresenterMode==='remote'?'화면 리모콘':'문제·답 보기'}</span><strong>도전 바이블 골든벨</strong><small style="display:block;margin-top:3px;font-size:9px;font-weight:700;opacity:.55">v28 FINAL</small></div>
+      <div class="mobile-presenter-title"><span>${mobilePresenterMode==='remote'?'화면 리모콘':'문제·답 보기'}</span><strong>도전 바이블 골든벨</strong><small style="display:block;margin-top:3px;font-size:9px;font-weight:700;opacity:.55">v29 FINAL</small></div>
       <button class="mobile-presenter-settings" id="mobileSettings">⚙ 설정</button>
     </header>
     ${modeTabs}
@@ -2131,58 +2131,53 @@ function scheduleQuestionLayout(){
   if(!stage)return;
   const epoch=++questionLayoutEpoch;
   let raf=0,stableRaf=0,stabilizing=false,revealed=!stage.classList.contains('layout-pending');
-  const visualMedia=stage.querySelector('.answer-media img,.answer-media video');
-  let mediaPrepared=!visualMedia;
+  const mediaEls=[...stage.querySelectorAll('.media-stage img,.media-stage video,.answer-media img,.answer-media video')];
+  const preparedMedia=new WeakSet();
   const isActive=()=>epoch===questionLayoutEpoch&&stage.isConnected;
   const reveal=()=>{
     if(revealed||!isActive())return;
     revealed=true;
     stabilizing=false;
     cancelAnimationFrame(stableRaf);
-    // Keep the final fitted inline sizes in place; only make the already-stable
-    // answer visible. visibility/opacity never participate in layout geometry.
     stage.style.visibility='';
     stage.style.opacity='';
     stage.classList.remove('layout-pending');
   };
-  const mediaReady=()=>{
-    if(!visualMedia)return true;
-    return mediaPrepared&&!!naturalMediaSize(visualMedia);
+  const mediaReady=()=>mediaEls.every(el=>{
+    if(!preparedMedia.has(el))return false;
+    if(el.tagName==='IMG')return el.complete&&el.naturalWidth>0&&el.naturalHeight>0;
+    if(el.tagName==='VIDEO')return el.readyState>=1&&el.videoWidth>0&&el.videoHeight>0;
+    return true;
+  });
+  const layoutSignature=()=>{
+    const textTargets=[...stage.querySelectorAll('.question-text,.answer-text,.answer-choice-text')];
+    const mediaTargets=[...stage.querySelectorAll('.media-stage,.answer-media')];
+    const textSig=textTargets.map(el=>{
+      const r=el.getBoundingClientRect();
+      return [Math.round(px(getComputedStyle(el).fontSize)*10)/10,Math.round(r.width*10)/10,Math.round(r.height*10)/10,el.scrollHeight].join(',');
+    }).join(';');
+    const mediaSig=mediaTargets.map(el=>{
+      const r=el.getBoundingClientRect();
+      return [Math.round(r.width*10)/10,Math.round(r.height*10)/10].join(',');
+    }).join(';');
+    return [stage.clientWidth,stage.clientHeight,stage.scrollWidth,stage.scrollHeight,textSig,mediaSig].join('|');
   };
-  const visualSignature=()=>{
-    const direct=stage.querySelector('.answer-direct.visual-answer');
-    const mediaStage=direct?.querySelector('.answer-media');
-    const textEl=direct?.querySelector('.answer-text');
-    const choiceText=direct?.querySelector('.answer-choice-text');
-    const mediaRect=mediaStage?.getBoundingClientRect();
-    const textTarget=textEl||choiceText;
-    const fontSize=textTarget?px(getComputedStyle(textTarget).fontSize):0;
-    const textHeight=textTarget?Math.max(textTarget.scrollHeight,textTarget.getBoundingClientRect().height):0;
-    return [
-      stage.clientWidth,stage.clientHeight,
-      direct?.clientHeight||0,
-      Math.round((mediaRect?.width||0)*10)/10,
-      Math.round((mediaRect?.height||0)*10)/10,
-      Math.round(fontSize*10)/10,
-      Math.round(textHeight*10)/10
-    ].join('|');
-  };
-  const stabilizeVisualAnswer=()=>{
+  const stabilize=()=>{
     if(revealed||stabilizing||!isActive()||!mediaReady())return;
     stabilizing=true;
     let last='',stableFrames=0,totalFrames=0;
     const step=()=>{
       if(!isActive()||revealed){stabilizing=false;return}
       fitQuestionLayout(stage);
-      const sig=visualSignature();
+      const sig=layoutSignature();
       stableFrames=(sig===last)?stableFrames+1:0;
       last=sig;
       totalFrames++;
-      // Require the exact media/text geometry to survive several paint opportunities.
-      // This covers cached images, slow decode, and delayed viewport/layout settling.
-      if(stableFrames>=3||totalFrames>=18){
+      // Do not expose the stage until the same fitted geometry survives several paints.
+      // This prevents both question and answer text/media from showing their CSS default size first.
+      if(stableFrames>=3||totalFrames>=20){
         fitQuestionLayout(stage);
-        requestAnimationFrame(()=>{
+        stableRaf=requestAnimationFrame(()=>{
           if(!isActive())return;
           fitQuestionLayout(stage);
           reveal();
@@ -2199,44 +2194,61 @@ function scheduleQuestionLayout(){
     raf=requestAnimationFrame(()=>requestAnimationFrame(()=>{
       if(!isActive())return;
       fitQuestionLayout(stage);
-      if(!revealed&&mediaReady())stabilizeVisualAnswer();
+      if(!revealed&&mediaReady())stabilize();
     }));
   };
-  run();
-  stage.querySelectorAll('img').forEach(el=>{
-    const afterImageReady=()=>{
-      if(!isActive())return;
-      const finish=()=>{mediaPrepared=true;run();stabilizeVisualAnswer()};
-      if(typeof el.decode==='function')el.decode().catch(()=>{}).finally(finish);
-      else finish();
-    };
-    if(!el.complete)el.addEventListener('load',afterImageReady,{once:true});
-    else if(el.naturalWidth>0)afterImageReady();
-    el.addEventListener('error',()=>{
-      if(!isActive())return;
-      mediaPrepared=true;
-      fitQuestionLayout(stage);
-      reveal();
-    },{once:true});
+
+  if(!mediaEls.length){
+    run();
+    stabilize();
+  }
+
+  mediaEls.forEach(el=>{
+    if(el.tagName==='IMG'){
+      const afterImageReady=()=>{
+        if(!isActive())return;
+        const finish=()=>{
+          if(!isActive())return;
+          preparedMedia.add(el);
+          run();
+          stabilize();
+        };
+        if(typeof el.decode==='function')el.decode().catch(()=>{}).finally(finish);
+        else finish();
+      };
+      if(el.complete&&el.naturalWidth>0)afterImageReady();
+      else el.addEventListener('load',afterImageReady,{once:true});
+      el.addEventListener('error',()=>{
+        if(!isActive())return;
+        preparedMedia.add(el);
+        run();
+        reveal();
+      },{once:true});
+    }else if(el.tagName==='VIDEO'){
+      const afterVideoReady=()=>{
+        if(!isActive())return;
+        preparedMedia.add(el);
+        run();
+        stabilize();
+      };
+      if(el.readyState>=1&&el.videoWidth>0)afterVideoReady();
+      else el.addEventListener('loadedmetadata',afterVideoReady,{once:true});
+      el.addEventListener('error',()=>{
+        if(!isActive())return;
+        preparedMedia.add(el);
+        run();
+        reveal();
+      },{once:true});
+    }
   });
-  stage.querySelectorAll('video').forEach(el=>{
-    const afterVideoReady=()=>{if(isActive()){mediaPrepared=true;run();stabilizeVisualAnswer()}};
-    if(el.readyState<1)el.addEventListener('loadedmetadata',afterVideoReady,{once:true});
-    else afterVideoReady();
-    el.addEventListener('error',()=>{
-      if(!isActive())return;
-      mediaPrepared=true;
-      fitQuestionLayout(stage);
-      reveal();
-    },{once:true});
-  });
-  // Fail-safe only: normal visual answers reveal through the stable-layout path above.
-  // A broken/blocked media resource must not leave the entire answer permanently blank.
+
+  // Fail-safe: broken media must not leave a question or answer permanently blank.
   if(!revealed)setTimeout(()=>{
     if(!isActive()||revealed)return;
     fitQuestionLayout(stage);
     reveal();
   },4000);
+
   if('ResizeObserver' in window){
     questionLayoutObserver=new ResizeObserver(()=>{if(isActive())run()});
     questionLayoutObserver.observe(stage);
@@ -2335,6 +2347,18 @@ async function renderQuestion(i){
     ${((answerVisible?answerAudio:audio))?`<audio id="activeNarration" src="${answerVisible?answerAudio:audio}" preload="auto" hidden></audio>`:''}
     <footer class="question-footer">${answerVisible?`<button class="board-quick-button" id="quickBoardBtn" title="문제판으로" aria-label="문제판으로">${boardGridSvg()}</button>`:''}<button id="answerBtn">${answerVisible?'문제 다시 보기':'정답 보기'}</button></footer>
   </main></div>`;
+
+  // v29: every dynamically fitted question/answer is hidden before the browser gets a paint opportunity.
+  // It is revealed only after scheduleQuestionLayout() has measured the final media/text geometry.
+  const freshlyRenderedStage=document.querySelector('.question-stage');
+  if(freshlyRenderedStage&&!freshlyRenderedStage.querySelector('.ox-answer')){
+    const needsDynamicFit=!!freshlyRenderedStage.querySelector('.question-text,.answer-text,.answer-choice-text,.media-stage img,.media-stage video,.answer-media img,.answer-media video');
+    if(needsDynamicFit){
+      freshlyRenderedStage.classList.add('layout-pending');
+      freshlyRenderedStage.style.visibility='hidden';
+      freshlyRenderedStage.style.opacity='0';
+    }
+  }
 
   document.getElementById('boardBtn').addEventListener('click',async()=>{
     const wanted=!!document.fullscreenElement;
@@ -2799,7 +2823,7 @@ const LEGACY_REMOTE_KEYS=[
   'bb4_remote_owner_room_session_v1','bb4_remote_owner_key_session_v1','bb4_remote_controller_room_session_v1',
   'bb4_remote_owner_room_v3','bb4_remote_owner_key_v3','bb4_remote_controller_room_v3'
 ];
-const BB4_REMOTE_BUILD='v28-canonical-entry-cache-guard-2026-08-28';
+const BB4_REMOTE_BUILD='v29-unified-prelayout-gate-2026-08-28';
 const BB4_ALLOWED_ORIGIN='https://bibleplay.github.io';
 const BB4_ALLOWED_PATH_PREFIX='/BibleGoldenBell_4X4/';
 
@@ -3433,7 +3457,7 @@ window.__BB4_DELETE_CONTROLLER_REGISTRATION_BY_UID__=deleteControllerRegistratio
 
 function controllerUrl(){
   const u=new URL(location.href);
-  u.searchParams.set('bb4remote','v28');
+  u.searchParams.set('bb4remote','v29');
   u.hash=new URLSearchParams({role:'controller',room:roomId,key:roomKey}).toString();
   return u.toString();
 }
