@@ -1454,7 +1454,8 @@ function renderMobilePresenterBoard(){
   }).join('');
 
   const hasAny=state.questions.some(mobileQuestionHasContent);
-  const modeTabs=remoteAvailable?`<div class="mobile-presenter-modebar" role="tablist" aria-label="사회자 사용 모드">
+  const connectionLabel=remoteConnected?'사회자 연결 유지 중':(remoteAvailable?'사회자 연결 확인 중':'사회자 연결 없음');
+  const modeTabs=`<div class="mobile-presenter-modebar" role="tablist" aria-label="사회자 사용 모드">
       <button type="button" data-phone-mode="preview" class="${mobilePresenterMode==='preview'?'is-active':''}" aria-pressed="${mobilePresenterMode==='preview'}">문제·답 보기</button>
       <button type="button" data-phone-mode="remote" class="${mobilePresenterMode==='remote'?'is-active':''}" aria-pressed="${mobilePresenterMode==='remote'}" ${remoteConnected?'':'disabled'}>화면 리모콘</button>
     </div>
@@ -1462,7 +1463,8 @@ function renderMobilePresenterBoard(){
       ${mobilePresenterMode==='remote'
         ?'<strong>방송 조작 모드</strong> · 여기서 누르는 진행 동작은 PC/TV에 즉시 반영됩니다.'
         :'<strong>개인 미리보기</strong> · 문제와 정답을 봐도 PC/TV 화면은 바뀌지 않습니다.'}
-    </div>`:'';
+      <span style="display:block;margin-top:5px;font-size:11px;opacity:.78">${connectionLabel}</span>
+    </div>`;
 
   const remoteTools=(remoteAvailable&&mobilePresenterMode==='remote')?`<section class="mobile-presenter-remote-tools">
       <div class="mobile-presenter-remote-status" id="mobileRemoteInlineStatus">${remoteConnected?'방송 화면 연결됨':'방송 화면 연결 확인 중…'}</div>
@@ -1477,7 +1479,7 @@ function renderMobilePresenterBoard(){
 
   document.getElementById('app').innerHTML=`<main class="mobile-presenter-shell">
     <header class="mobile-presenter-header">
-      <div class="mobile-presenter-title"><span>${mobilePresenterMode==='remote'?'화면 리모콘':'문제·답 보기'}</span><strong>도전 바이블 골든벨</strong></div>
+      <div class="mobile-presenter-title"><span>${mobilePresenterMode==='remote'?'화면 리모콘':'문제·답 보기'}</span><strong>도전 바이블 골든벨</strong><small style="display:block;margin-top:3px;font-size:9px;font-weight:700;opacity:.55">v17</small></div>
       <button class="mobile-presenter-settings" id="mobileSettings">⚙ 설정</button>
     </header>
     ${modeTabs}
@@ -2195,10 +2197,22 @@ async function renderQuestion(i){
   scheduleQuestionLayout();
 }
 
+function mobileRemoteSettingsCard(){
+  if(!isMobilePresenterDevice())return '';
+  const available=mobileRemoteAvailable();
+  const connected=mobileRemoteConnected();
+  const status=connected?'연결 유지 중':(available?'연결 확인 중':'연결 안 됨');
+  const tone=connected?'#167c4b':available?'#9a6a00':'#6b7280';
+  return `<section id="mobileRemoteSettingsCard" style="margin:0 0 18px;padding:15px 16px;border:1px solid #d9dee7;border-radius:11px;background:#fff;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap">
+    <div><div style="font-size:12px;font-weight:900;color:#0e3166">사회자 원격 연결</div><div style="margin-top:5px;font-size:14px;font-weight:900;color:${tone}">● ${status}</div><div style="margin-top:4px;color:#6b7280;font-size:11px">연결을 끊으면 이 기기는 새 사회자 링크를 받아야 다시 원격 조작할 수 있습니다.</div></div>
+    ${connected?'<button type="button" id="mobileDisconnectRemote" style="min-height:40px;padding:0 14px;border:1px solid #b42318;border-radius:8px;background:#fff;color:#b42318;font-weight:900">이 기기 연결 끊기</button>':'<span style="font-size:11px;color:#6b7280">방송 PC에서 만든 사회자 링크로 연결하세요.</span>'}
+  </section>`;
+}
+
 function renderAdmin(){
   currentView='admin';const q=state.questions[adminIndex];const slots=state.questions.map((x,i)=>`<button class="${i===adminIndex?'is-selected ':''}${questionFilled(x)?'is-filled':''}" data-admin-num="${i}"><strong>${i+1}</strong></button>`).join('');
-  document.getElementById('app').innerHTML=`<div class="admin-shell">${commonTopbar()}<main class="admin-scroll-area"><section class="admin-panel"><header class="admin-header"><div><span class="kicker">ADMIN</span><h1>16문제 관리</h1><p>1번부터 16번까지 각 문제의 유형과 내용을 직접 설정합니다.</p></div><div class="admin-header-actions"><button class="admin-secondary-button" id="exportBtn">⇩ 내보내기</button><button class="admin-secondary-button" id="importBtn">☁ 불러오기</button><button class="admin-secondary-button" id="eventBtn">${isMobilePresenterDevice()?'← 문제판':'← 행사 화면'}</button></div></header><div class="admin-layout"><aside class="admin-nav"><div class="admin-nav-kicker">4×4 BOARD</div><div class="admin-nav-title">16문제</div><div class="admin-slot-label">문제 번호</div><div class="admin-slots">${slots}</div></aside><form class="admin-form" id="adminForm"><div class="admin-form-title">${adminIndex+1}번 문제</div><div class="admin-workspace"><div class="admin-editor"><div class="admin-form-grid"><label class="admin-field"><span>문제 유형</span><select id="qType">${Object.entries(TYPE_LABELS).map(([v,l])=>`<option value="${v}" ${q.type===v?'selected':''}>${l}</option>`).join('')}</select></label><label class="admin-field" id="answerTypeField"><span>답변 방식</span><select id="answerType"><option value="short" ${q.answerType==='short'?'selected':''}>단답형</option><option value="multiple" ${q.answerType==='multiple'?'selected':''}>4지선다</option></select></label></div><div id="hiddenOption"></div><label class="admin-field full"><span>문제</span><textarea id="qText">${esc(q.question)}</textarea></label><div id="choicesHost"></div><label class="admin-field full" id="answerTextField"><span>정답</span><textarea id="qAnswer" rows="5">${esc(q.answer)}</textarea></label><label class="admin-field full"><span>힌트 (선택)</span><input id="qHint" value="${displayText(q.hint)}" placeholder="필요한 문제에만 입력하세요."></label><div class="media-grid">${mediaCard(q,'questionImage','문제 이미지','image/*')}${mediaCard(q,'answerImage','정답 이미지','image/*')}${mediaCard(q,'video','문제 동영상','video/*')}${mediaCard(q,'answerVideo','정답 동영상','video/*')}${mediaCard(q,'audio','문제 음성','audio/*')}${mediaCard(q,'answerAudio','정답 음성','audio/*')}</div><div class="media-layout-options"><span>문제 미디어 크기</span><label><input type="radio" name="questionMediaLayout" value="full" ${q.questionMediaLayout!=='compact'?'checked':''}> 크게</label><label><input type="radio" name="questionMediaLayout" value="compact" ${q.questionMediaLayout==='compact'?'checked':''}> 작게 · 글자 중심</label></div><div class="media-layout-options"><span>정답 미디어 크기</span><label><input type="radio" name="answerMediaLayout" value="full" ${q.answerMediaLayout!=='compact'?'checked':''}> 크게</label><label><input type="radio" name="answerMediaLayout" value="compact" ${q.answerMediaLayout==='compact'?'checked':''}> 작게 · 글자 중심</label></div><div class="audio-options"><span>문제 동영상 재생</span><label><input type="radio" name="videoPlayback" value="manual" ${q.videoPlayback!=='auto'?'checked':''}> 수동</label><label><input type="radio" name="videoPlayback" value="auto" ${q.videoPlayback==='auto'?'checked':''}> 자동재생</label></div><div class="audio-options"><span>정답 동영상 재생</span><label><input type="radio" name="answerVideoPlayback" value="manual" ${q.answerVideoPlayback!=='auto'?'checked':''}> 수동</label><label><input type="radio" name="answerVideoPlayback" value="auto" ${q.answerVideoPlayback==='auto'?'checked':''}> 자동재생</label></div><div class="audio-options"><span>문제 음성 재생</span><label><input type="radio" name="audioPlayback" value="manual" ${q.audioPlayback!=='auto'?'checked':''}> 수동</label><label><input type="radio" name="audioPlayback" value="auto" ${q.audioPlayback==='auto'?'checked':''}> 자동재생</label></div><div class="audio-options"><span>정답 음성 재생</span><label><input type="radio" name="answerAudioPlayback" value="manual" ${q.answerAudioPlayback!=='auto'?'checked':''}> 수동</label><label><input type="radio" name="answerAudioPlayback" value="auto" ${q.answerAudioPlayback==='auto'?'checked':''}> 자동재생</label></div><footer class="admin-form-footer"><div class="left-actions"><button type="button" class="clear-btn" id="clearQuestion">이 문제 초기화</button></div><span class="autosave-note" id="autosaveNote">변경 내용 자동 저장</span><button type="submit" class="save-btn">저장</button></footer></div><aside class="admin-preview"><div class="preview-head"><strong>실제 화면 미리보기</strong><div class="preview-tabs"><button type="button" class="preview-tab ${adminPreviewMode==='question'?'active':''}" data-preview-mode="question">문제</button><button type="button" class="preview-tab ${adminPreviewMode==='answer'?'active':''}" data-preview-mode="answer">정답</button></div></div><div class="preview-screen" id="previewScreen"></div></aside></div></form></div></section></main></div>`;
-  wireCommonTopbar();document.querySelectorAll('[data-admin-num]').forEach(b=>b.addEventListener('click',()=>{saveAdminForm(false);adminIndex=Number(b.dataset.adminNum);adminPreviewMode='question';renderAdmin()}));document.getElementById('eventBtn').addEventListener('click',()=>{saveAdminForm(false);currentView='home';render()});document.getElementById('exportBtn').addEventListener('click',()=>{saveAdminForm(false);exportPack()});document.getElementById('importBtn').addEventListener('click',chooseImport);document.getElementById('adminForm').addEventListener('submit',e=>{e.preventDefault();saveAdminForm(true)});document.getElementById('clearQuestion').addEventListener('click',clearAdminQuestion);document.getElementById('qType').addEventListener('change',handleQuestionTypeChange);document.getElementById('answerType')?.addEventListener('change',()=>{syncAdminDynamic();queueAutosave()});['qText','qAnswer','qHint'].forEach(id=>document.getElementById(id)?.addEventListener('input',queueAutosave));document.querySelectorAll('input[name="questionMediaLayout"],input[name="answerMediaLayout"],input[name="videoPlayback"],input[name="answerVideoPlayback"],input[name="audioPlayback"],input[name="answerAudioPlayback"]').forEach(x=>x.addEventListener('change',queueAutosave));document.querySelectorAll('[data-preview-mode]').forEach(b=>b.addEventListener('click',()=>{adminPreviewMode=b.dataset.previewMode;document.querySelectorAll('[data-preview-mode]').forEach(x=>x.classList.toggle('active',x.dataset.previewMode===adminPreviewMode));updatePreview()}));syncAdminDynamic();wireMediaCards();updatePreview();
+  document.getElementById('app').innerHTML=`<div class="admin-shell">${commonTopbar()}<main class="admin-scroll-area"><section class="admin-panel"><header class="admin-header"><div><span class="kicker">ADMIN</span><h1>16문제 관리</h1><p>1번부터 16번까지 각 문제의 유형과 내용을 직접 설정합니다.</p></div><div class="admin-header-actions"><button class="admin-secondary-button" id="exportBtn">⇩ 내보내기</button><button class="admin-secondary-button" id="importBtn">☁ 불러오기</button><button class="admin-secondary-button" id="eventBtn">${isMobilePresenterDevice()?'← 문제판':'← 행사 화면'}</button></div></header>${mobileRemoteSettingsCard()}<div class="admin-layout"><aside class="admin-nav"><div class="admin-nav-kicker">4×4 BOARD</div><div class="admin-nav-title">16문제</div><div class="admin-slot-label">문제 번호</div><div class="admin-slots">${slots}</div></aside><form class="admin-form" id="adminForm"><div class="admin-form-title">${adminIndex+1}번 문제</div><div class="admin-workspace"><div class="admin-editor"><div class="admin-form-grid"><label class="admin-field"><span>문제 유형</span><select id="qType">${Object.entries(TYPE_LABELS).map(([v,l])=>`<option value="${v}" ${q.type===v?'selected':''}>${l}</option>`).join('')}</select></label><label class="admin-field" id="answerTypeField"><span>답변 방식</span><select id="answerType"><option value="short" ${q.answerType==='short'?'selected':''}>단답형</option><option value="multiple" ${q.answerType==='multiple'?'selected':''}>4지선다</option></select></label></div><div id="hiddenOption"></div><label class="admin-field full"><span>문제</span><textarea id="qText">${esc(q.question)}</textarea></label><div id="choicesHost"></div><label class="admin-field full" id="answerTextField"><span>정답</span><textarea id="qAnswer" rows="5">${esc(q.answer)}</textarea></label><label class="admin-field full"><span>힌트 (선택)</span><input id="qHint" value="${displayText(q.hint)}" placeholder="필요한 문제에만 입력하세요."></label><div class="media-grid">${mediaCard(q,'questionImage','문제 이미지','image/*')}${mediaCard(q,'answerImage','정답 이미지','image/*')}${mediaCard(q,'video','문제 동영상','video/*')}${mediaCard(q,'answerVideo','정답 동영상','video/*')}${mediaCard(q,'audio','문제 음성','audio/*')}${mediaCard(q,'answerAudio','정답 음성','audio/*')}</div><div class="media-layout-options"><span>문제 미디어 크기</span><label><input type="radio" name="questionMediaLayout" value="full" ${q.questionMediaLayout!=='compact'?'checked':''}> 크게</label><label><input type="radio" name="questionMediaLayout" value="compact" ${q.questionMediaLayout==='compact'?'checked':''}> 작게 · 글자 중심</label></div><div class="media-layout-options"><span>정답 미디어 크기</span><label><input type="radio" name="answerMediaLayout" value="full" ${q.answerMediaLayout!=='compact'?'checked':''}> 크게</label><label><input type="radio" name="answerMediaLayout" value="compact" ${q.answerMediaLayout==='compact'?'checked':''}> 작게 · 글자 중심</label></div><div class="audio-options"><span>문제 동영상 재생</span><label><input type="radio" name="videoPlayback" value="manual" ${q.videoPlayback!=='auto'?'checked':''}> 수동</label><label><input type="radio" name="videoPlayback" value="auto" ${q.videoPlayback==='auto'?'checked':''}> 자동재생</label></div><div class="audio-options"><span>정답 동영상 재생</span><label><input type="radio" name="answerVideoPlayback" value="manual" ${q.answerVideoPlayback!=='auto'?'checked':''}> 수동</label><label><input type="radio" name="answerVideoPlayback" value="auto" ${q.answerVideoPlayback==='auto'?'checked':''}> 자동재생</label></div><div class="audio-options"><span>문제 음성 재생</span><label><input type="radio" name="audioPlayback" value="manual" ${q.audioPlayback!=='auto'?'checked':''}> 수동</label><label><input type="radio" name="audioPlayback" value="auto" ${q.audioPlayback==='auto'?'checked':''}> 자동재생</label></div><div class="audio-options"><span>정답 음성 재생</span><label><input type="radio" name="answerAudioPlayback" value="manual" ${q.answerAudioPlayback!=='auto'?'checked':''}> 수동</label><label><input type="radio" name="answerAudioPlayback" value="auto" ${q.answerAudioPlayback==='auto'?'checked':''}> 자동재생</label></div><footer class="admin-form-footer"><div class="left-actions"><button type="button" class="clear-btn" id="clearQuestion">이 문제 초기화</button></div><span class="autosave-note" id="autosaveNote">변경 내용 자동 저장</span><button type="submit" class="save-btn">저장</button></footer></div><aside class="admin-preview"><div class="preview-head"><strong>실제 화면 미리보기</strong><div class="preview-tabs"><button type="button" class="preview-tab ${adminPreviewMode==='question'?'active':''}" data-preview-mode="question">문제</button><button type="button" class="preview-tab ${adminPreviewMode==='answer'?'active':''}" data-preview-mode="answer">정답</button></div></div><div class="preview-screen" id="previewScreen"></div></aside></div></form></div></section></main></div>`;
+  wireCommonTopbar();document.querySelectorAll('[data-admin-num]').forEach(b=>b.addEventListener('click',()=>{saveAdminForm(false);adminIndex=Number(b.dataset.adminNum);adminPreviewMode='question';renderAdmin()}));document.getElementById('eventBtn').addEventListener('click',()=>{saveAdminForm(false);currentView='home';render()});document.getElementById('exportBtn').addEventListener('click',()=>{saveAdminForm(false);exportPack()});document.getElementById('importBtn').addEventListener('click',chooseImport);document.getElementById('adminForm').addEventListener('submit',e=>{e.preventDefault();saveAdminForm(true)});document.getElementById('clearQuestion').addEventListener('click',clearAdminQuestion);document.getElementById('qType').addEventListener('change',handleQuestionTypeChange);document.getElementById('answerType')?.addEventListener('change',()=>{syncAdminDynamic();queueAutosave()});['qText','qAnswer','qHint'].forEach(id=>document.getElementById(id)?.addEventListener('input',queueAutosave));document.querySelectorAll('input[name="questionMediaLayout"],input[name="answerMediaLayout"],input[name="videoPlayback"],input[name="answerVideoPlayback"],input[name="audioPlayback"],input[name="answerAudioPlayback"]').forEach(x=>x.addEventListener('change',queueAutosave));document.querySelectorAll('[data-preview-mode]').forEach(b=>b.addEventListener('click',()=>{adminPreviewMode=b.dataset.previewMode;document.querySelectorAll('[data-preview-mode]').forEach(x=>x.classList.toggle('active',x.dataset.previewMode===adminPreviewMode));updatePreview()}));document.getElementById('mobileDisconnectRemote')?.addEventListener('click',async()=>{if(!confirm('이 기기의 사회자 원격 연결을 끊을까요? 다시 연결하려면 방송 PC에서 새 사회자 링크를 받아야 합니다.'))return;try{await window.__BB4_DISCONNECT_CONTROLLER__?.();}finally{renderAdmin();}});syncAdminDynamic();wireMediaCards();updatePreview();
 }
 
 async function handleQuestionTypeChange(){
@@ -2459,7 +2473,7 @@ const LEGACY_REMOTE_KEYS=[
   'bb4_remote_owner_room_session_v1','bb4_remote_owner_key_session_v1','bb4_remote_controller_room_session_v1',
   'bb4_remote_owner_room_v3','bb4_remote_owner_key_v3','bb4_remote_controller_room_v3'
 ];
-const BB4_REMOTE_BUILD='v16-final-mobile-dual-safe-2026-08-28';
+const BB4_REMOTE_BUILD='v17-mobile-dual-mode-visible-2026-08-28';
 const BB4_ALLOWED_ORIGIN='https://bibleplay.github.io';
 const BB4_ALLOWED_PATH_PREFIX='/BibleGoldenBell_4X4/';
 
@@ -2872,9 +2886,10 @@ async function publishState(force){
   lastPublishedSig=sig;
 }
 function controllerUrl(){
-  const base=location.origin+location.pathname+location.search;
-  const p=new URLSearchParams({role:'controller',room:roomId,key:roomKey});
-  return `${base}#${p.toString()}`;
+  const u=new URL(location.href);
+  u.searchParams.set('bb4remote','v17');
+  u.hash=new URLSearchParams({role:'controller',room:roomId,key:roomKey}).toString();
+  return u.toString();
 }
 async function copyControllerLink(){
   if(!connected||role!=='display')return;
@@ -2900,6 +2915,28 @@ async function rotateRoom(){
     console.error(err);badgeState('원격 오류','is-bad');panelStatus('사회자 연결 리셋에 실패했습니다.');
   }
 }
+
+async function disconnectControllerDevice(){
+  const oldRoom=roomId;
+  try{
+    if(role==='controller'&&connected&&user?.uid&&oldRoom){
+      try{await fb.dbMod.remove(fb.dbMod.ref(db,`rooms/${oldRoom}/members/${user.uid}`));}catch{}
+    }
+  }finally{
+    stopRealtime();
+    connected=false;roomId='';roomKey='';joinProof='';displayState=null;
+    secureRemove(CONTROLLER_ROOM_STORE);
+    window.__BB4_REMOTE_DISPLAY_STATE__=null;
+    window.__BB4_PHONE_MODE__='preview';
+    role='handheld';
+    const u=new URL(location.href);u.hash='';
+    history.replaceState(null,'',u.pathname+u.search);
+    signalControllerStatus(false,false);
+    toast('이 기기의 사회자 원격 연결을 끊었습니다.');
+  }
+  return true;
+}
+window.__BB4_DISCONNECT_CONTROLLER__=disconnectControllerDevice;
 
 async function connectControllerFromUrl(){
   const f=frag();
