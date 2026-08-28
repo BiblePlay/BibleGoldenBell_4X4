@@ -1561,7 +1561,7 @@ function renderMobilePresenterBoard(){
 
   document.getElementById('app').innerHTML=`<main class="mobile-presenter-shell">
     <header class="mobile-presenter-header">
-      <div class="mobile-presenter-title"><span>${mobilePresenterMode==='remote'?'화면 리모콘':'문제·답 보기'}</span><strong>도전 바이블 골든벨</strong><small style="display:block;margin-top:3px;font-size:9px;font-weight:700;opacity:.55">v23 FINAL</small></div>
+      <div class="mobile-presenter-title"><span>${mobilePresenterMode==='remote'?'화면 리모콘':'문제·답 보기'}</span><strong>도전 바이블 골든벨</strong><small style="display:block;margin-top:3px;font-size:9px;font-weight:700;opacity:.55">v24 FINAL</small></div>
       <button class="mobile-presenter-settings" id="mobileSettings">⚙ 설정</button>
     </header>
     ${modeTabs}
@@ -2318,9 +2318,9 @@ function desktopRemoteSettingsCard(){
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
         <button type="button" class="admin-secondary-button" id="desktopRemoteConnect">방송 PC 원격 켜기</button>
+        <button type="button" class="admin-secondary-button" id="desktopRemoteDisconnect" style="border-color:#e6b7b7;color:#a32626">방송 PC 원격 끄기</button>
         <button type="button" class="admin-secondary-button" id="desktopRemoteCopy">사회자 링크 복사</button>
         <button type="button" class="admin-secondary-button" id="desktopRemoteRotate">사회자 연결 리셋</button>
-        <button type="button" class="admin-secondary-button" id="desktopRemoteDisconnect" style="border-color:#e6b7b7;color:#a32626">방송 PC 원격 끄기</button>
       </div>
     </div>
     <details id="desktopRemoteDeviceArea" class="bb4-device-details">
@@ -2405,10 +2405,10 @@ function updateRemoteSettingsCards(){
   const copy=document.getElementById('desktopRemoteCopy');
   const rotate=document.getElementById('desktopRemoteRotate');
   const disconnect=document.getElementById('desktopRemoteDisconnect');
-  if(connect)connect.hidden=!!st.displayConnected||!st.ownerRegistered;
-  if(copy)copy.hidden=!st.displayConnected;
-  if(rotate)rotate.hidden=!st.displayConnected;
-  if(disconnect)disconnect.hidden=!st.displayConnected;
+  if(connect){connect.hidden=false;connect.disabled=!!st.displayConnected||!st.ownerRegistered;}
+  if(disconnect){disconnect.hidden=false;disconnect.disabled=!st.displayConnected;}
+  if(copy){copy.hidden=false;copy.disabled=!st.displayConnected;}
+  if(rotate){rotate.hidden=false;rotate.disabled=!st.displayConnected;}
 }
 
 function renderAdmin(){
@@ -2653,7 +2653,7 @@ if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)){
 render();
 })();
 </script>
-<!-- BB4_REMOTE_BEGIN_RUNTIME FINAL_V22_AUDITED_DEVICE_PRESENCE_CONTROL -->
+<!-- BB4_REMOTE_BEGIN_RUNTIME FINAL_V24_RECONNECT_TRANSPORT_AUDITED -->
 <script>
 (async()=>{
 'use strict';
@@ -2678,14 +2678,14 @@ const LEGACY_REMOTE_KEYS=[
   'bb4_remote_owner_room_session_v1','bb4_remote_owner_key_session_v1','bb4_remote_controller_room_session_v1',
   'bb4_remote_owner_room_v3','bb4_remote_owner_key_v3','bb4_remote_controller_room_v3'
 ];
-const BB4_REMOTE_BUILD='v23-galaxy-longpress-popup-final-2026-08-28';
+const BB4_REMOTE_BUILD='v24-reconnect-transport-ui-final-2026-08-28';
 const BB4_ALLOWED_ORIGIN='https://bibleplay.github.io';
 const BB4_ALLOWED_PATH_PREFIX='/BibleGoldenBell_4X4/';
 
 let fb=null,auth=null,db=null,user=null;
-let role='none',connected=false,roomId='',roomKey='',joinProof='';
+let role='none',connected=false,transportOnline=false,roomId='',roomKey='',joinProof='';
 let displayState=null,lastCommandId=null,lastPublishedSig='';
-let unsubCommand=null,unsubState=null,unsubDevices=null,unsubDeviceControl=null,pollTimer=null,heartbeatTimer=null,controllerPresenceTimer=null,deviceUiTimer=null;
+let unsubCommand=null,unsubState=null,unsubDevices=null,unsubDeviceControl=null,unsubTransport=null,pollTimer=null,heartbeatTimer=null,controllerPresenceTimer=null,deviceUiTimer=null;
 let lastControllerSeenAt=0,lastControllerCommandSentAt=0,controllerConnectedAt=0,controllerRegisteredAt=0,controllerOnDisconnectHandle=null,deviceControlNonce='',controllerPaused=false;
 let controllerDevices={};
 let longTimer=null,longFired=false,longIndex=null,toastTimer=null;
@@ -2758,12 +2758,13 @@ function isHandheldGeneralContext(){
   return coarse&&matchMedia('(max-width:1366px)').matches;
 }
 function modeLabel(m){return m==='2'?'2팀':m==='3'?'3팀':'개인'}
-function signalControllerStatus(available,controllerConnected=connected){
+function signalControllerStatus(available,controllerConnected=(connected&&transportOnline)){
+  const actualConnected=!!controllerConnected&&!!transportOnline;
   window.__BB4_REMOTE_CONTROLLER_AVAILABLE__=!!available;
-  window.__BB4_REMOTE_CONTROLLER_CONNECTED__=!!controllerConnected;
+  window.__BB4_REMOTE_CONTROLLER_CONNECTED__=actualConnected;
   window.__BB4_REMOTE_CONTROLLER_PAUSED__=!!controllerPaused;
   window.__BB4_REMOTE_CONTROLLER_MANUAL_OFF__=secureGet(CONTROLLER_REMOTE_ENABLED_STORE)==='0';
-  try{window.dispatchEvent(new CustomEvent('bb4-remote-controller-status',{detail:{available:!!available,connected:!!controllerConnected,paused:!!controllerPaused}}))}catch{}
+  try{window.dispatchEvent(new CustomEvent('bb4-remote-controller-status',{detail:{available:!!available,connected:actualConnected,paused:!!controllerPaused}}))}catch{}
 }
 function deviceLetter(i){
   i=Number(i)||0;
@@ -2797,13 +2798,13 @@ function remoteStatusSnapshot(){
   const remoteCount=rows.filter(x=>x.mode==='remote').length;
   return {
     role,
-    displayConnected:role==='display'&&connected,
-    controllerConnected:role==='controller'&&connected,
-    controllerOnline:role==='display'&&connected&&rows.length>0,
+    displayConnected:role==='display'&&connected&&transportOnline,
+    controllerConnected:role==='controller'&&connected&&transportOnline,
+    controllerOnline:role==='display'&&connected&&transportOnline&&rows.length>0,
     activeControllerCount:rows.length,
     remoteControllerCount:remoteCount,
     previewControllerCount:Math.max(0,rows.length-remoteCount),
-    roomReady:role==='display'&&connected&&!!roomId,
+    roomReady:role==='display'&&connected&&transportOnline&&!!roomId,
     controllerLinkStored:!!jsonGet(OWNER_ROOM_STORE)?.room,
     ownerRegistered:!!(secureGet(OWNER_KEY_STORE)||'').trim(),
     displayManualOff:secureGet(OWNER_REMOTE_ENABLED_STORE)==='0',
@@ -2871,6 +2872,37 @@ function sigOf(s){
     mode:s.mode,packFingerprint:s.packFingerprint,view:s.view,question:s.question,
     answerVisible:s.answerVisible,progress:s.progress
   });
+}
+async function waitForRealtimeTransport(timeoutMs=10000){
+  if(!db||!fb?.dbMod)return false;
+  try{fb.dbMod.goOnline(db)}catch{}
+  return await new Promise(resolve=>{
+    let done=false,off=null;
+    const finish=(ok)=>{if(done)return;done=true;try{off?.()}catch{};clearTimeout(timer);transportOnline=!!ok;resolve(!!ok)};
+    const timer=setTimeout(()=>finish(false),timeoutMs);
+    try{
+      off=fb.dbMod.onValue(fb.dbMod.ref(db,'.info/connected'),snap=>{if(snap.val()===true)finish(true)},()=>finish(false));
+    }catch{finish(false)}
+  });
+}
+function startTransportMonitor(){
+  try{unsubTransport?.()}catch{};unsubTransport=null;
+  if(!db||!fb?.dbMod)return;
+  try{
+    unsubTransport=fb.dbMod.onValue(fb.dbMod.ref(db,'.info/connected'),snap=>{
+      const next=snap.val()===true;
+      const changed=next!==transportOnline;
+      transportOnline=next;
+      if(role==='controller'&&connected){
+        signalControllerStatus(true,next);
+        if(next&&changed){writeControllerPresence().catch(()=>{});}
+      }else if(role==='display'&&connected){
+        signalDisplayStatus();
+        if(changed&&!next){badgeState('재연결 중','is-warn');panelStatus('Firebase 실시간 연결이 잠시 끊겼습니다. 자동 재연결을 기다리는 중입니다.');}
+        else if(changed&&next){badgeState('원격 연결됨','is-ok is-display-connected');panelStatus(`방송 PC 원격 연결 유지 중 · ${modeLabel(api()?.getSnapshot?.().mode)} · 사회자 리모콘 상태는 위에서 확인할 수 있습니다.`);}
+      }
+    },()=>{});
+  }catch{}
 }
 
 function mountUi(){
@@ -3150,8 +3182,8 @@ async function restoreOwnerRoom(){
   }catch{return false}
 }
 function stopRealtime(){
-  try{unsubCommand?.()}catch{};try{unsubState?.()}catch{};try{unsubDevices?.()}catch{};try{unsubDeviceControl?.()}catch{};
-  unsubCommand=unsubState=unsubDevices=unsubDeviceControl=null;
+  try{unsubCommand?.()}catch{};try{unsubState?.()}catch{};try{unsubDevices?.()}catch{};try{unsubDeviceControl?.()}catch{};try{unsubTransport?.()}catch{};
+  unsubCommand=unsubState=unsubDevices=unsubDeviceControl=unsubTransport=null;
   clearInterval(pollTimer);clearInterval(heartbeatTimer);clearInterval(controllerPresenceTimer);clearInterval(deviceUiTimer);
   pollTimer=heartbeatTimer=controllerPresenceTimer=deviceUiTimer=null;lastCommandId=null;lastPublishedSig='';
   controllerOnDisconnectHandle=null;controllerConnectedAt=0;controllerRegisteredAt=0;deviceControlNonce='';controllerPaused=false;
@@ -3162,12 +3194,13 @@ async function connectDisplay(auto){
   try{
     panelStatus('보안 연결 중…');badgeState('연결 중','is-warn');
     role='display';
-    try{fb?.dbMod?.goOnline?.(db)}catch{}
     secureSet(OWNER_REMOTE_ENABLED_STORE,'1');
+    if(!await waitForRealtimeTransport(10000))throw new Error('REALTIME_RECONNECT_TIMEOUT');
     const restored=await restoreOwnerRoom();
     if(!restored)await createRoom();
     try{await fb.dbMod.remove(fb.dbMod.ref(db,`rooms/${roomId}/revoked`));}catch{}
     connected=true;
+    startTransportMonitor();
 
     let first=true;
     unsubCommand=fb.dbMod.onValue(
@@ -3206,7 +3239,8 @@ async function connectDisplay(auto){
   }catch(err){
     console.error(err);connected=false;
     const msg=String(err?.code||err?.message||'');
-    if(msg.includes('BB4_REMOTE_ORIGIN_NOT_ALLOWED'))panelStatus('보안을 위해 원격 기능은 공식 GitHub Pages의 BibleGoldenBell_4X4 주소에서만 실행됩니다.');
+    if(msg.includes('REALTIME_RECONNECT_TIMEOUT'))panelStatus('Firebase 실시간 연결을 다시 열지 못했습니다. 인터넷 연결을 확인한 뒤 원격 켜기를 다시 눌러주세요.');
+    else if(msg.includes('BB4_REMOTE_ORIGIN_NOT_ALLOWED'))panelStatus('보안을 위해 원격 기능은 공식 GitHub Pages의 BibleGoldenBell_4X4 주소에서만 실행됩니다.');
     else if(msg.includes('operation-not-allowed'))panelStatus('Firebase 익명 로그인이 꺼져 있습니다. Authentication의 익명 로그인을 켜세요.');
     else if(msg.includes('permission-denied'))panelStatus('Firebase 인증은 통과했지만 Database Security Rules 또는 관리자 등록 증명이 맞지 않습니다.');
     else if(msg.includes('NO_OWNER_KEY'))panelStatus('관리자 키가 없습니다. 관리자 키를 붙여넣거나 등록 파일을 선택하세요.');
@@ -3222,6 +3256,7 @@ async function disconnectDisplayDevice(){
   connected=false;lastControllerSeenAt=0;
   secureSet(OWNER_REMOTE_ENABLED_STORE,'0');
   try{fb?.dbMod?.goOffline?.(db)}catch{}
+  transportOnline=false;
   badgeState('원격 끊김','is-warn');
   panelStatus('방송 PC 원격 연결이 끊겼습니다. 문제 데이터와 사회자 연결키는 유지됩니다. “방송 PC 원격 켜기”로 다시 시작할 수 있습니다.');
   setPanelButtons();signalDisplayStatus();
@@ -3233,7 +3268,7 @@ window.__BB4_DISPLAY_CONNECT__=()=>connectDisplay(false);
 window.__BB4_COPY_CONTROLLER_LINK__=copyControllerLink;
 window.__BB4_ROTATE_CONTROLLER_ROOM__=rotateRoom;
 async function publishState(force){
-  if(!connected||role!=='display')return;
+  if(!connected||!transportOnline||role!=='display')return;
   const payload=currentPayload();if(!payload)return;
   const sig=sigOf(payload);
   if(!force&&sig===lastPublishedSig)return;
@@ -3277,7 +3312,7 @@ window.__BB4_DELETE_CONTROLLER_REGISTRATION_BY_UID__=deleteControllerRegistratio
 
 function controllerUrl(){
   const u=new URL(location.href);
-  u.searchParams.set('bb4remote','v23');
+  u.searchParams.set('bb4remote','v24');
   u.hash=new URLSearchParams({role:'controller',room:roomId,key:roomKey}).toString();
   return u.toString();
 }
@@ -3331,7 +3366,7 @@ async function disconnectControllerDevice(){
   }finally{
     stopRealtime();
     try{fb?.dbMod?.goOffline?.(db)}catch{}
-    connected=false;roomId='';roomKey='';joinProof='';displayState=null;controllerPaused=false;
+    transportOnline=false;connected=false;roomId='';roomKey='';joinProof='';displayState=null;controllerPaused=false;
     clearControllerRegistrationLocal();
     window.__BB4_REMOTE_DISPLAY_STATE__=null;
     window.__BB4_PHONE_MODE__='preview';
@@ -3349,10 +3384,11 @@ async function setControllerRemoteEnabled(enable){
   if(!saved?.room&&!frag().room){toast('저장된 사회자 등록이 없습니다.');return false;}
   if(enable){
     secureSet(CONTROLLER_REMOTE_ENABLED_STORE,'1');
-    try{fb?.dbMod?.goOnline?.(db)}catch{}
-    if(connected&&role==='controller'){signalControllerStatus(true,true);return true;}
+    if(connected&&role==='controller'&&transportOnline){signalControllerStatus(true,true);return true;}
+    stopRealtime();connected=false;transportOnline=false;displayState=null;window.__BB4_REMOTE_DISPLAY_STATE__=null;
     const ok=await connectControllerFromUrl();
     if(ok)toast('사회자 원격 연결을 켰습니다.');
+    else toast('사회자 원격 재연결에 실패했습니다. 인터넷 연결을 확인한 뒤 다시 시도하세요.');
     return ok;
   }
   secureSet(CONTROLLER_REMOTE_ENABLED_STORE,'0');
@@ -3360,6 +3396,7 @@ async function setControllerRemoteEnabled(enable){
   stopRealtime();
   connected=false;displayState=null;window.__BB4_REMOTE_DISPLAY_STATE__=null;
   try{fb?.dbMod?.goOffline?.(db)}catch{}
+  transportOnline=false;
   if(window.__BB4_PHONE_MODE__==='remote'){
     window.__BB4_PHONE_MODE__='preview';
   }
@@ -3408,6 +3445,7 @@ async function handleControllerPermissionLoss(){
   stopRealtime();connected=false;displayState=null;controllerPaused=false;window.__BB4_REMOTE_DISPLAY_STATE__=null;
   clearControllerRegistrationLocal();
   try{fb?.dbMod?.goOffline?.(db)}catch{}
+  transportOnline=false;
   window.__BB4_PHONE_MODE__='preview';role='handheld';
   signalControllerStatus(false,false);
   badgeState('권한 없음','is-bad');
@@ -3425,13 +3463,14 @@ async function connectControllerFromUrl(){
     role='controller';roomId=targetRoom;roomKey=targetKey||'';
     signalControllerStatus(true,false);
     try{fb?.dbMod?.goOffline?.(db)}catch{}
+    transportOnline=false;
     return false;
   }
   role='controller';roomId=targetRoom;roomKey=targetKey||'';
   signalControllerStatus(true,false);
   try{
-    try{fb?.dbMod?.goOnline?.(db)}catch{}
     await ensureAuth();
+    if(!await waitForRealtimeTransport(10000))throw new Error('REALTIME_RECONNECT_TIMEOUT');
     if(targetKey){
       joinProof=await sha(targetKey);
       if(!fromLink){
@@ -3449,6 +3488,7 @@ async function connectControllerFromUrl(){
     }
 
     connected=true;controllerPaused=false;
+    startTransportMonitor();
     secureSet(CONTROLLER_REMOTE_ENABLED_STORE,'1');
     if(!targetKey&&saved?.room===roomId){
       secureSet(CONTROLLER_ROOM_STORE,JSON.stringify({room:roomId,key:String(saved.key||'')}));
@@ -3479,10 +3519,11 @@ async function connectControllerFromUrl(){
     toast('사회자 원격 연결이 준비되었습니다.');
     return true;
   }catch(err){
-    console.error(err);connected=false;
+    console.error(err);connected=false;transportOnline=false;
     signalControllerStatus(!!savedControllerCredentials()?.room,false);
     const msg=String(err?.code||err?.message||'');
-    if(msg.includes('BB4_REMOTE_ORIGIN_NOT_ALLOWED'))panelStatus('보안을 위해 사회자 원격은 공식 GitHub Pages 주소에서만 실행됩니다.');
+    if(msg.includes('REALTIME_RECONNECT_TIMEOUT'))panelStatus('Firebase 실시간 연결을 다시 열지 못했습니다. 등록은 유지되어 있습니다. 인터넷 연결을 확인한 뒤 원격 연결 켜기를 다시 눌러주세요.');
+    else if(msg.includes('BB4_REMOTE_ORIGIN_NOT_ALLOWED'))panelStatus('보안을 위해 사회자 원격은 공식 GitHub Pages 주소에서만 실행됩니다.');
     else if(msg.includes('operation-not-allowed'))panelStatus('Firebase Authentication에서 익명 로그인을 먼저 켜야 합니다.');
     else if(msg.includes('permission-denied')||msg.includes('CONTROLLER_LINK_REQUIRED')){
       clearControllerRegistrationLocal();
@@ -3494,7 +3535,7 @@ async function connectControllerFromUrl(){
   }
 }
 async function sendCommand(action,payload){
-  if(!connected||role!=='controller'||window.__BB4_PHONE_MODE__!=='remote')return false;
+  if(!connected||!transportOnline||role!=='controller'||window.__BB4_PHONE_MODE__!=='remote')return false;
   if(controllerPaused){toast('이 기기는 관리자에서 일시정지되어 있습니다.');return false;}
   const mine=api()?.getSnapshot?.();
   const now=Date.now();
@@ -3508,7 +3549,7 @@ async function sendCommand(action,payload){
   return true;
 }
 async function writeControllerPresence(){
-  if(!connected||role!=='controller'||!user?.uid||!roomId)return false;
+  if(!connected||!transportOnline||role!=='controller'||!user?.uid||!roomId)return false;
   const now=Date.now();
   if(!controllerConnectedAt)controllerConnectedAt=now;
   if(!controllerRegisteredAt){
